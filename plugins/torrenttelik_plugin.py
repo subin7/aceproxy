@@ -26,7 +26,8 @@ class Torrenttelik(AceProxyPlugin):
         try:
             req = urllib2.Request(url, headers={'User-Agent' : "Magic Browser"})
             Torrenttelik.playlist = urllib2.urlopen(req, timeout=10).read()
-            Torrenttelik.playlist = Torrenttelik.playlist.split('\xef\xbb\xbf')[1]    # garbage at the beginning
+            Torrenttelik.playlist = Torrenttelik.playlist.split('\xef\xbb\xbf')[1]     # garbage at the beginning
+            Torrenttelik.playlist = Torrenttelik.playlist.replace(',\r\n]}', '\r\n]}') # excess comma at the end
         except:
             Torrenttelik.logger.error("Can't download playlist!")
             return False
