@@ -34,13 +34,16 @@ class Torrenttelik(AceProxyPlugin):
 
         return True
 
-    def handle(self, connection):
+    def handle(self, connection, headers_only=False):
 
         hostport = connection.headers['Host']
 
         connection.send_response(200)
         connection.send_header('Content-Type', 'application/x-mpegurl')
         connection.end_headers()
+        
+        if headers_only:
+            return
 
         query = urlparse.urlparse(connection.path).query
         self.params = urlparse.parse_qs(query)

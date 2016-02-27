@@ -13,10 +13,14 @@ class Stat(AceProxyPlugin):
         self.config = AceConfig
         self.stuff = AceStuff
 
-    def handle(self, connection):
+    def handle(self, connection, headers_only=False):
         connection.send_response(200)
         connection.send_header('Content-type', 'text/html')
         connection.end_headers()
+        
+        if headers_only:
+            return
+        
         connection.wfile.write(
             '<html><body><h4>Connected clients: ' + str(self.stuff.clientcounter.total) + '</h4>')
         connection.wfile.write(

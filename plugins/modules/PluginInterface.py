@@ -15,5 +15,5 @@ class AceProxyPlugin(object):
     def __init__(self, AceConfig, AceStuff):
         pass
 
-    def handle(self, connection):
+    def handle(self, connection, headers_only=False):
         raise NotImplementedError

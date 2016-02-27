@@ -153,7 +153,7 @@ class HTTPHandler(BaseHTTPServer.BaseHTTPRequestHandler):
         '''
         GET request handler
         '''
-        logger = logging.getLogger('http_HTTPHandler')
+        logger = logging.getLogger('do_GET')
         self.clientconnected = True
         # Don't wait videodestroydelay if error happened
         self.errorhappened = True
@@ -193,7 +193,7 @@ class HTTPHandler(BaseHTTPServer.BaseHTTPRequestHandler):
         # Handle request with plugin handler
         if self.reqtype in AceStuff.pluginshandlers:
             try:
-                AceStuff.pluginshandlers.get(self.reqtype).handle(self)
+                AceStuff.pluginshandlers.get(self.reqtype).handle(self, headers_only)
             except Exception as e:
                 logger.error('Plugin exception: ' + repr(e))
                 logger.error(traceback.format_exc())
@@ -204,6 +204,8 @@ class HTTPHandler(BaseHTTPServer.BaseHTTPRequestHandler):
         self.handleRequest(headers_only)
 
     def handleRequest(self, headers_only):
+        logger = logging.getLogger('handleRequest')
+        
         # Check if third parameter exists
         # …/pid/blablablablabla/video.mpg
         #                      |_________|
@@ -406,9 +408,9 @@ class HTTPHandler(BaseHTTPServer.BaseHTTPRequestHandler):
             AceStuff.clientcounter.delete(self.path_unquoted, self.clientip)
             if not self.errorhappened and not AceStuff.clientcounter.get(self.path_unquoted):
                 # If no error happened and we are the only client
-                logger.debug("Sleeping for " + str(
-                    AceConfig.videodestroydelay) + " seconds")
-                gevent.sleep(AceConfig.videodestroydelay)
+                if AceConfig.videodestroydelay:
+                    logger.debug("Sleeping for " + str(AceConfig.videodestroydelay) + " seconds")
+                    gevent.sleep(AceConfig.videodestroydelay)
             if not AceStuff.clientcounter.get(self.path_unquoted):
                 logger.debug("That was the last client, destroying AceClient")
                 if AceConfig.vlcuse:

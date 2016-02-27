@@ -37,7 +37,7 @@ class Allfon(AceProxyPlugin):
 
         return True
 
-    def handle(self, connection):
+    def handle(self, connection, headers_only=False):
         # 30 minutes cache
         if not Allfon.playlist or (int(time.time()) - Allfon.playlisttime > 30 * 60):
             if not self.downloadPlaylist():
@@ -49,6 +49,9 @@ class Allfon(AceProxyPlugin):
         connection.send_response(200)
         connection.send_header('Content-Type', 'application/x-mpegurl')
         connection.end_headers()
+        
+        if headers_only:
+            return;
 
         # Match playlist with regexp
 

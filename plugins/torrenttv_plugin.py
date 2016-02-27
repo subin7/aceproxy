@@ -44,7 +44,7 @@ class Torrenttv(AceProxyPlugin):
 
         return True
 
-    def handle(self, connection):
+    def handle(self, connection, headers_only=False):
         # 30 minutes cache
         if not Torrenttv.playlist or (int(time.time()) - Torrenttv.playlisttime > 30 * 60):
             if not self.downloadPlaylist():
@@ -57,6 +57,9 @@ class Torrenttv(AceProxyPlugin):
         connection.send_header('Content-Type', 'application/x-mpegurl')
         connection.end_headers()
 
+        if headers_only:
+            return
+        
         # Match playlist with regexp
         matches = re.finditer(r',(?P<name>\S.+) \((?P<group>.+)\)\n(?P<url>^.+$)',
                               Torrenttv.playlist, re.MULTILINE)

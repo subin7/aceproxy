@@ -13,8 +13,12 @@ class Helloworld(AceProxyPlugin):
     def __init__(self, AceConfig, AceStuff):
         pass
 
-    def handle(self, connection):
+    def handle(self, connection, headers_only=False):
         connection.send_response(200)
         connection.end_headers()
+        
+        if headers_only:
+            return
+        
         connection.wfile.write(
             '<html><body><h3>Hello world!</h3></body></html>')
