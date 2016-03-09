@@ -4,8 +4,14 @@ from gevent.event import Event
 import telnetlib
 import logging
 import json
+import time
+import threading
+import traceback
+import Queue
+from collections import deque
 from acemessages import *
-
+import aceconfig
+from aceconfig import AceConfig
 
 class AceException(Exception):
 
@@ -49,15 +55,23 @@ class AceClient(object):
         self._authevent = Event()
         # Result for getURL()
         self._urlresult = AsyncResult()
+        # Result for GETCID()
+        self._cidresult = AsyncResult()
         # Event for resuming from PAUSE
         self._resumeevent = Event()
         # Seekback seconds.
         self._seekback = 0
         # Did we get START command again? For seekback.
         self._started_again = False
+        
+        self._idleSince = time.time()
+        self._lock = threading.Condition(threading.Lock())
+        self._streamReaderConnection = None
+        self._streamReaderState = None
+        self._streamReaderQueue = deque()
 
         # Logger
-        logger = logging.getLogger('AceClient_init')
+        logger = logging.getLogger('AceClieimport tracebacknt_init')
 
         try:
             self._socket = telnetlib.Telnet(host, port, connect_timeout)
@@ -102,6 +116,8 @@ class AceClient(object):
 
     def _write(self, message):
         try:
+            logger = logging.getLogger("AceClient_write")
+            logger.debug(message)
             self._socket.write(message + "\r\n")
         except EOFError as e:
             raise AceException("Write error! " + repr(e))
@@ -136,18 +152,12 @@ class AceClient(object):
 
     def _getResult(self):
         # Logger
-        logger = logging.getLogger("AceClient_START")
-
         try:
             result = self._result.get(timeout=self._resulttimeout)
             if not result:
-                errmsg = "START error!"
-                logger.error(errmsg)
-                raise AceException(errmsg)
+                raise AceException("Result not received")
         except gevent.Timeout:
-            errmsg = "START timeout!"
-            logger.error(errmsg)
-            raise AceException(errmsg)
+            raise AceException("Timeout")
 
         return result
 
@@ -159,12 +169,30 @@ class AceClient(object):
         self._urlresult = AsyncResult()
 
         self._write(AceMessage.request.LOADASYNC(datatype.upper(), 0, value))
-        contentinfo = self._getResult()
+        filename = urllib2.unquote(self._getResult().get('files')[0][0])
 
         self._write(AceMessage.request.START(datatype.upper(), value))
         self._getResult()
 
-        return contentinfo
+        return filename
+
+    def STOP(self):
+        '''
+        Stop video method
+        '''
+        self._result = AsyncResult()
+        self._write(AceMessage.request.STOP)
+        self._getResult()
+
+    def GETCID(self, datatype, url):
+        self._result = AsyncResult()
+        self._write(AceMessage.request.LOADASYNC(datatype.upper(), 0, {'url': url}))
+        contentinfo = self._getResult()
+        
+        self._cidresult = AsyncResult()
+        self._write(AceMessage.request.GETCID(contentinfo.get('checksum'), contentinfo.get('infohash'), 0, 0, 0))
+        cid = self._cidresult.get(True, 5)
+        return '' if not cid or cid == '' else cid[2:]
 
     def getUrl(self, timeout=40):
         # Logger
@@ -177,6 +205,75 @@ class AceClient(object):
             errmsg = "getURL timeout!"
             logger.error(errmsg)
             raise AceException(errmsg)
+
+    def startStreamReader(self, url, cid, counter):
+        logger = logging.getLogger("StreamReader")
+        self._streamReaderState = None
+        logger.debug("Opening video stream: %s" % url)
+        
+        try:
+            connection = self._streamReaderConnection = urllib2.urlopen(url)
+            
+            if connection.getcode() != 200:
+                logger.error("Failed to open video stream %s" % connection)
+                return
+                
+            with self._lock:
+                self._streamReaderState = 1
+                self._lock.notifyAll()
+            
+            while True:
+                data = None
+                clients = counter.getClients(cid)
+                
+                try:
+                    data = connection.read(AceConfig.readchunksize)
+                except:
+                    break;
+
+                if data and clients:
+                    with self._lock:
+                        if len(self._streamReaderQueue) == AceConfig.readcachesize:
+                            self._streamReaderQueue.popleft()
+                        self._streamReaderQueue.append(data)
+                    
+                    for c in clients:
+                        try:
+                            c.addChunk(data, 5.0)
+                        except Queue.Full:
+                            if len(clients) > 1:
+                                logger.debug("Disconnecting client: %s" % str(c))
+                                c.closeConnection()
+                elif not clients:
+                    logger.debug("All clients disconnected - closing video stream")
+                    break
+                else:
+                    logger.warning("No data received")
+                    break
+        except urllib2.URLError:
+            logger.error("Failed to open video stream")
+            logger.error(traceback.format_exc())
+        except:
+            logger.error(traceback.format_exc())
+            if counter.getClients(cid):
+                logger.error("Failed to read video stream")
+        finally:
+            self.closeStreamReader()
+            with self._lock:
+                self._streamReaderState = 2
+                self._lock.notifyAll()
+            counter.deleteAll(cid)
+    
+    def closeStreamReader(self):
+        logger = logging.getLogger("StreamReader")
+        c = self._streamReaderConnection
+        
+        if c:
+            self._streamReaderConnection = None
+            c.close()
+            logger.debug("Video stream closed")
+
+        self._streamReaderQueue.clear()
 
     def getPlayEvent(self, timeout=None):
         '''
@@ -201,7 +298,7 @@ class AceClient(object):
             try:
                 self._recvbuffer = self._socket.read_until("\r\n")
                 self._recvbuffer = self._recvbuffer.strip()
-                #logger.debug('<<< ' + self._recvbuffer)
+                # logger.debug('<<< ' + self._recvbuffer)
             except:
                 # If something happened during read, abandon reader.
                 if not self._shuttingDown.isSet():
@@ -216,7 +313,7 @@ class AceClient(object):
                     if 'key=' in self._recvbuffer:
                         self._request_key_begin = self._recvbuffer.find('key=')
                         self._request_key = \
-                            self._recvbuffer[self._request_key_begin+4:self._request_key_begin+14]
+                            self._recvbuffer[self._request_key_begin + 4:self._request_key_begin + 14]
                         try:
                             self._write(AceMessage.request.READY_key(
                                 self._request_key, self._product_key))
@@ -246,8 +343,7 @@ class AceClient(object):
                         self._result.set(False)
                     else:
                         logger.debug("Content info: %s", _contentinfo)
-                        _filename = urllib2.unquote(_contentinfo.get('files')[0][0])
-                        self._result.set(_filename)
+                        self._result.set(_contentinfo)
 
                 elif self._recvbuffer.startswith(AceMessage.response.START):
                     # START
@@ -290,10 +386,7 @@ class AceClient(object):
                     self._position_last = self._position[2].split('=')[1]
                     self._position_buf = self._position[9].split('=')[1]
                     self._position = self._position[4].split('=')[1]
-                    logger.debug('Current position/last/buf: %s/%s/%s' % (self._position,
-                                                                          self._position_last,
-                                                                          self._position_buf)
-                    )
+
                     if self._seekback and not self._started_again:
                         self._write(AceMessage.request.SEEK(str(int(self._position_last) - \
                             self._seekback)))
@@ -318,6 +411,8 @@ class AceClient(object):
                             AceException(self._status + ' with message ' + self._recvbuffer.split(';')[2]))
                     elif self._status == 'main:starting':
                         self._result.set(True)
+                    elif self._status == 'main:idle':
+                        self._result.set(True)
 
                 elif self._recvbuffer.startswith(AceMessage.response.PAUSE):
                     logger.debug("PAUSE event")
@@ -327,3 +422,7 @@ class AceClient(object):
                     logger.debug("RESUME event")
                     gevent.sleep(self._pausedelay)
                     self._resumeevent.set()
+                
+                elif self._recvbuffer.startswith('##') or len(self._recvbuffer) == 0:
+                    self._cidresult.set(self._recvbuffer)
+                    logger.debug("CID: %s" %self._recvbuffer)

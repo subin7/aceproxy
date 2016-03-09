@@ -54,6 +54,10 @@ class AceConfig(acedefconfig.AceDefConfig):
     httphost = '0.0.0.0'
     # HTTP Server port
     httpport = 8000
+    # Read the video input stream in chunks of the following size    
+    readchunksize = 8192
+    # Cache the following number of the tailing chunks
+    readcachesize = 1000
     # If started as root, drop privileges to this user.
     # Leave empty to disable.
     aceproxyuser = ''
