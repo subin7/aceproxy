@@ -5,14 +5,9 @@ and groups
 '''
 import re
 import urllib2
+import plugins.config.playlist as config
 
 class PlaylistGenerator(object):
-
-    m3uheader = \
-        '#EXTM3U url-tvg="http://www.teleguide.info/download/new3/jtv.zip"\n'
-    m3uemptyheader = '#EXTM3U\n'
-    m3uchanneltemplate = \
-        '#EXTINF:-1 group-title="%s" tvg-name="%s" tvg-id="%s" tvg-logo="%s",%s\n%s\n'
 
     def __init__(self):
         self.itemlist = list()
@@ -35,9 +30,16 @@ class PlaylistGenerator(object):
         '''
         Generates EXTINF line with url
         '''
-        return PlaylistGenerator.m3uchanneltemplate % (
-            item.get('group', ''), item.get('tvg', ''), item.get('tvgid', ''),
-            item.get('logo', ''), item.get('name'), item.get('url'))
+        if not item.has_key('tvg'):
+            item['tvg'] = ''
+        if not item.has_key('tvgid'):
+            item['tvgid'] = ''
+        if not item.has_key('group'):
+            item['group'] = ''
+        if not item.has_key('logo'):
+            item['logo'] = ''
+        
+        return config.m3uchanneltemplate % item
 
     def exportm3u(self, hostport, add_ts=False, empty_header=False, archive=False, header=None):
         '''
@@ -46,9 +48,9 @@ class PlaylistGenerator(object):
         
         if header is None:
             if not empty_header:
-                itemlist = PlaylistGenerator.m3uheader
+                itemlist = config.m3uheader
             else:
-                itemlist = PlaylistGenerator.m3uemptyheader
+                itemlist = config.m3uemptyheader
                 if add_ts:
                     # Adding ts:// after http:// for some players
                     hostport = 'ts://' + hostport
