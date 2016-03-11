@@ -42,9 +42,7 @@ class AceConfig(acedefconfig.AceDefConfig):
     # Ace Stream Engine connection timeout
     aceconntimeout = 5
     # Ace Stream Engine authentication result timeout
-    aceresulttimeout = 10
-    # Message level (DEBUG, INFO, WARNING, ERROR, CRITICAL)
-    debug = logging.DEBUG
+    aceresulttimeout = 5
     #
     # ----------------------------------------------------
     # AceProxy configuration
@@ -73,10 +71,6 @@ class AceConfig(acedefconfig.AceDefConfig):
         )
     # Maximum concurrent connections (video clients)
     maxconns = 10
-    # Logging to a file
-    loggingtoafile = False
-    # Path for logs, default is current directory. For example '/tmp/'
-    logpath = ''
     #
     # ----------------------------------------------------
     # VLC configuration
@@ -169,3 +163,15 @@ class AceConfig(acedefconfig.AceDefConfig):
     fakeheaderuas = ('HLS Client/2.0 (compatible; LG NetCast.TV-2012)',
                      'Mozilla/5.0 (DirectFB; Linux armv7l) AppleWebKit/534.26+ (KHTML, like Gecko) Version/5.0 Safari/534.26+ LG Browser/5.00.00(+mouse+3D+SCREEN+TUNER; LGE; 42LM670T-ZA; 04.41.03; 0x00000001;); LG NetCast.TV-2012 0'
                      )
+
+    # Logging configuration
+    #
+    # Log level (DEBUG, INFO, WARNING, ERROR, CRITICAL)
+    loglevel = logging.DEBUG
+    # Log message format
+    logfmt = '%(asctime)s %(levelname)s %(threadName)s %(filename)s:%(lineno)d %(name)s| %(message)s'
+    # Log date format
+    logdatefmt='%d.%m %H:%M:%S'
+    # Full path to a log file
+    logfile = None 
+    

@@ -165,24 +165,18 @@ class AceClient(object):
         '''
         Start video method
         '''
-        self._result = AsyncResult()
         self._urlresult = AsyncResult()
-
-        self._write(AceMessage.request.LOADASYNC(datatype.upper(), 0, value))
-        filename = urllib2.unquote(self._getResult().get('files')[0][0])
-
         self._write(AceMessage.request.START(datatype.upper(), value))
         self._getResult()
-
-        return filename
 
     def STOP(self):
         '''
         Stop video method
         '''
-        self._result = AsyncResult()
-        self._write(AceMessage.request.STOP)
-        self._getResult()
+        if self._state is not None and self._state != '0':
+            self._result = AsyncResult()
+            self._write(AceMessage.request.STOP)
+            self._getResult()
 
     def GETCID(self, datatype, url):
         self._result = AsyncResult()
@@ -208,7 +202,7 @@ class AceClient(object):
 
     def startStreamReader(self, url, cid, counter):
         logger = logging.getLogger("StreamReader")
-        self._streamReaderState = None
+        self._streamReaderState = 1
         logger.debug("Opening video stream: %s" % url)
         
         try:
@@ -219,7 +213,7 @@ class AceClient(object):
                 return
                 
             with self._lock:
-                self._streamReaderState = 1
+                self._streamReaderState = 2
                 self._lock.notifyAll()
             
             while True:
@@ -243,7 +237,7 @@ class AceClient(object):
                         except Queue.Full:
                             if len(clients) > 1:
                                 logger.debug("Disconnecting client: %s" % str(c))
-                                c.closeConnection()
+                                c.destroy()
                 elif not clients:
                     logger.debug("All clients disconnected - closing video stream")
                     break
@@ -260,7 +254,7 @@ class AceClient(object):
         finally:
             self.closeStreamReader()
             with self._lock:
-                self._streamReaderState = 2
+                self._streamReaderState = 3
                 self._lock.notifyAll()
             counter.deleteAll(cid)
     

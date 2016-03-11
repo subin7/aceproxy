@@ -20,7 +20,6 @@ class AceDefConfig(object):
     acestartuptimeout = 10
     aceconntimeout = 5
     aceresulttimeout = 10
-    debug = logging.DEBUG
     #
     httphost = '0.0.0.0'
     httpport = 8000
@@ -32,8 +31,6 @@ class AceDefConfig(object):
         '192.168.0.0/16',
         )
     maxconns = 10
-    loggingtoafile = False
-    logpath = ''
     vlcuse = False
     vlcuseaceplayer = False
     vlcspawn = False

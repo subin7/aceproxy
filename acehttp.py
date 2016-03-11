@@ -59,23 +59,21 @@ class HTTPHandler(BaseHTTPServer.BaseHTTPRequestHandler):
         '''
         Disconnecting client
         '''
-        with self.lock:
-            if self.clientconnected:
-                self.clientconnected = False
-                try:
-                    self.wfile.close()
-                    self.rfile.close()
-                    self.connection.shutdown(SHUT_RDWR)
-                except:
-                    pass
-            self.lock.notify()
+        if self.connected:
+            self.connected = False
+            try:
+                self.wfile.close()
+                self.rfile.close()
+                self.connection.shutdown(SHUT_RDWR)
+            except:
+                pass
 
     def dieWithError(self, errorcode=500):
         '''
         Close connection with error
         '''
         logging.warning("Dying with error")
-        if self.clientconnected:
+        if self.connected:
             self.send_error(errorcode)
             self.end_headers()
             self.closeConnection()
@@ -94,7 +92,7 @@ class HTTPHandler(BaseHTTPServer.BaseHTTPRequestHandler):
             while True:
                 if AceConfig.videoobey and not AceConfig.vlcuse:
                     # Wait for PlayEvent if videoobey is enabled. Not for VLC
-                    self.ace.getPlayEvent()
+                    self.client.ace.getPlayEvent()
 
                 if AceConfig.videoobey and AceConfig.vlcuse:
                     # For VLC
@@ -102,7 +100,7 @@ class HTTPHandler(BaseHTTPServer.BaseHTTPRequestHandler):
                     # flag is not set), pause the stream if AceEngine says so and
                     # we should obey it.
                     # A bit ugly, huh?
-                    self.streamstate = self.ace.getPlayEvent(0.5)
+                    self.streamstate = self.client.ace.getPlayEvent(0.5)
                     if self.streamstate and not self.vlcstate:
                         AceStuff.vlcclient.playBroadcast(self.vlcid)
                         self.vlcstate = True
@@ -112,12 +110,12 @@ class HTTPHandler(BaseHTTPServer.BaseHTTPRequestHandler):
                             AceStuff.vlcclient.pauseBroadcast(self.vlcid)
                             self.vlcstate = False
 
-                if not self.clientconnected:
+                if not self.connected:
                     logger.debug("Client is not connected, terminating")
                     break
 
                 data = self.video.read(4096)
-                if data and self.clientconnected:
+                if data and self.connected:
                     self.wfile.write(data)
                 else:
                     logger.warning("Video connection closed")
@@ -127,7 +125,7 @@ class HTTPHandler(BaseHTTPServer.BaseHTTPRequestHandler):
             logger.warning("Video connection dropped")
         finally:
             self.video.close()
-            self.closeConnection()
+            self.client.destroy()
 
     def hangDetector(self):
         '''
@@ -143,7 +141,10 @@ class HTTPHandler(BaseHTTPServer.BaseHTTPRequestHandler):
             pass
         finally:
             logger.debug("Client disconnected")
-            self.closeConnection()
+            client = self.client
+            if client:
+                self.client.destroy()
+            
             try:
                 self.requestgreenlet.kill()
             except:
@@ -160,7 +161,8 @@ class HTTPHandler(BaseHTTPServer.BaseHTTPRequestHandler):
         GET request handler
         '''
         logger = logging.getLogger('do_GET')
-        self.clientconnected = True
+        self.reqtime = time.time()
+        self.connected = True
         # Don't wait videodestroydelay if error happened
         self.errorhappened = True
         # Headers sent flag for fake headers UAs
@@ -252,13 +254,13 @@ class HTTPHandler(BaseHTTPServer.BaseHTTPRequestHandler):
             except (IndexError, ValueError):
                 self.params.append('0')
         
-        self.ace = None
-        self.lock = threading.Condition(threading.Lock())
-        self.queue = deque()
+        self.url = None
         self.path_unquoted = urllib2.unquote(self.splittedpath[2])
-        self.cid = self.getCid(self.reqtype, self.path_unquoted)
-        self.vlcid = self.cid
-        shouldStart = AceStuff.clientcounter.add(self.cid, self) == 1
+        cid = self.getCid(self.reqtype, self.path_unquoted)
+        logger.debug("CID: " + cid)
+        self.client = Client(cid, self)
+        self.vlcid = cid
+        shouldStart = AceStuff.clientcounter.add(cid, self.client) == 1
 
         # Send fake headers if this User-Agent is in fakeheaderuas tuple
         if fakeua:
@@ -278,16 +280,16 @@ class HTTPHandler(BaseHTTPServer.BaseHTTPRequestHandler):
             # Initializing AceClient
             if shouldStart:
                 if self.reqtype == 'pid':
-                    self.ace.START(
+                    self.client.ace.START(
                         self.reqtype, {'content_id': self.path_unquoted, 'file_indexes': self.params[0]})
                 elif self.reqtype == 'torrent':
                     paramsdict = dict(
                         zip(aceclient.acemessages.AceConst.START_TORRENT, self.params))
                     paramsdict['url'] = self.path_unquoted
-                    self.ace.START(self.reqtype, paramsdict)
+                    self.client.ace.START(self.reqtype, paramsdict)
                 logger.debug("START done")
                 # Getting URL
-                self.url = self.ace.getUrl(AceConfig.videotimeout)
+                self.url = self.client.ace.getUrl(AceConfig.videotimeout)
                 # Rewriting host for remote Ace Stream Engine
                 self.url = self.url.replace('127.0.0.1', AceConfig.acehost)
 
@@ -303,10 +305,10 @@ class HTTPHandler(BaseHTTPServer.BaseHTTPRequestHandler):
                     else:
                         self.vlcprefix = ''
 
-                    self.ace.pause()
+                    self.client.ace.pause()
                     # Sleeping videodelay
                     gevent.sleep(AceConfig.videodelay)
-                    self.ace.play()
+                    self.client.ace.play()
 
                     AceStuff.vlcclient.startBroadcast(
                         self.vlcid, self.vlcprefix + self.url, AceConfig.vlcmux, AceConfig.vlcpreaccess)
@@ -348,34 +350,8 @@ class HTTPHandler(BaseHTTPServer.BaseHTTPRequestHandler):
                 # Run proxyReadWrite
                 self.proxyReadWrite()
             else:
-                if shouldStart:
-                    self.ace._streamReaderState = None
-                    gevent.spawn(self.ace.startStreamReader, self.url, self.cid, AceStuff.clientcounter)
-                    gevent.sleep()
-                    
-                    with self.ace._lock:
-                        while self.clientconnected and self.ace._streamReaderState is None:
-                            self.ace._lock.wait()
-                        if self.clientconnected and self.ace._streamReaderState != 1:
-                            raise urllib2.URLError
+                self.client.handle(shouldStart, self.url)
                 
-                if self.clientconnected:    
-                    self.send_response(200)
-                    self.end_headers()
-                    
-                while self.clientconnected:
-                    data = self.getChunk(60.0)
-                    
-                    if data and self.clientconnected:
-                        try:
-                            self.wfile.write(data)
-                        except:
-                            break
-                    elif self.clientconnected:
-                        logger.debug("No data received in 60 seconds - disconnecting")
-                        break
-                    else:
-                        break
 
             # Waiting until hangDetector is joined
             self.hanggreenlet.join()
@@ -393,53 +369,28 @@ class HTTPHandler(BaseHTTPServer.BaseHTTPRequestHandler):
             self.errorhappened = True
             self.dieWithError()
         finally:
-            AceStuff.clientcounter.delete(self.cid, self)
-            logger.debug("END REQUEST")
+            try:
+                AceStuff.clientcounter.delete(cid, self.client)
+                self.client.destroy()
+                self.ace = None
+                self.client = None
+                logger.debug("END REQUEST")
+            except:
+                logger.error(traceback.format_exc())
     
-    def addChunk(self, chunk, timeout):
-        start = time.time()
-        with self.lock:
-            while(self.clientconnected and (len(self.queue) == AceConfig.readcachesize)):
-                remaining = time.time() - start + timeout
-                if remaining > 0:
-                    self.lock.wait(remaining)
-                else:
-                    raise Queue.Full
-            if self.clientconnected:
-                self.queue.append(chunk)
-                self.lock.notifyAll()
-    
-    def getChunk(self, timeout):
-        start = time.time()
-        with self.lock:
-            while(self.clientconnected and (len(self.queue) == 0)):
-                remaining = time.time() - start + timeout
-                if remaining > 0:
-                    self.lock.wait(remaining)
-                else:
-                    raise Queue.Empty
-            if self.clientconnected:
-                chunk = self.queue.popleft()
-                self.lock.notifyAll()
-                return chunk
-            else:
-                return None
-
     def getCid(self, reqtype, url):
         cid = ''
     
         if reqtype == 'torrent':
             if url[:4].lower() == 'http' :
                 if url[-8:].lower() == '.acelive' :
-                    AceStuff.clientcounter.lock.acquire()
-                    try:
+                    with AceStuff.clientcounter.lock:
                         if not AceStuff.clientcounter.idleace:
                             AceStuff.clientcounter.idleace = AceStuff.clientcounter.createAce()
                         cid = AceStuff.clientcounter.idleace.GETCID(reqtype, url)
-                    finally:
-                        AceStuff.clientcounter.lock.release()
         
         return url if cid == '' else cid
+
 
 class HTTPServer(SocketServer.ThreadingMixIn, BaseHTTPServer.HTTPServer):
 
@@ -447,6 +398,95 @@ class HTTPServer(SocketServer.ThreadingMixIn, BaseHTTPServer.HTTPServer):
         # Do not print HTTP tracebacks
         pass
 
+
+class Client:
+    
+    def __init__(self, cid, handler):
+        self.cid = cid
+        self.handler = handler
+        self.ace = None
+        self.lock = threading.Condition(threading.Lock())
+        self.queue = deque()
+    
+    def handle(self, shouldStart, url):
+        logger = logging.getLogger("ClientHandler")
+        
+        if shouldStart:
+            self.ace._streamReaderState = 1
+            gevent.spawn(self.ace.startStreamReader, url, self.cid, AceStuff.clientcounter)
+            gevent.sleep()
+            
+        with self.ace._lock:
+            start = time.time()
+            while self.handler.connected and self.ace._streamReaderState == 1:
+                remaining = start + 5.0 - time.time()
+                if remaining > 0:
+                    self.ace._lock.wait(remaining)
+                else:
+                    logger.warning("Video stream not opened in 5 seconds - disconnecting")
+                    self.handler.dieWithError()
+                    return
+                
+            if self.handler.connected and self.ace._streamReaderState != 2:
+                logger.warning("No video stream found")
+                self.handler.dieWithError()
+                return
+            
+        if self.handler.connected:
+            self.handler.send_response(200)
+            self.handler.end_headers()
+            
+        while self.handler.connected and self.ace._streamReaderState == 2:
+            data = self.getChunk(60.0)
+            
+            if data and self.handler.connected:
+                try:
+                    self.handler.wfile.write(data)
+                except:
+                    break
+            elif self.handler.connected:
+                logger.debug("No data received in 60 seconds - disconnecting")
+                break
+            else:
+                break
+
+    def addChunk(self, chunk, timeout):
+        start = time.time()
+        with self.lock:
+            while(self.handler.connected and (len(self.queue) == AceConfig.readcachesize)):
+                remaining = start + timeout + time.time()
+                if remaining > 0:
+                    self.lock.wait(remaining)
+                else:
+                    raise Queue.Full
+            if self.handler.connected:
+                self.queue.append(chunk)
+                self.lock.notifyAll()
+    
+    def getChunk(self, timeout):
+        start = time.time()
+        with self.lock:
+            while(self.handler.connected and (len(self.queue) == 0)):
+                remaining = start + timeout - time.time()
+                if remaining > 0:
+                    self.lock.wait(remaining)
+                else:
+                    raise Queue.Empty
+            if self.handler.connected:
+                chunk = self.queue.popleft()
+                self.lock.notifyAll()
+                return chunk
+            else:
+                return None
+            
+    def destroy(self):
+        with self.lock:
+            self.handler.closeConnection()
+            self.lock.notifyAll()
+            self.queue.clear()
+    
+    def __eq__(self, other):
+        return self is other
 
 class AceStuff(object):
     '''
@@ -479,8 +519,10 @@ def drop_privileges(uid_name, gid_name='nogroup'):
     return False
 
 logging.basicConfig(
-    filename=AceConfig.logpath + 'acehttp.log' if AceConfig.loggingtoafile else None,
-    format='%(asctime)s %(levelname)s %(name)s: %(message)s', datefmt='%d.%m.%Y %H:%M:%S', level=AceConfig.debug)
+    level=AceConfig.loglevel,
+    filename=AceConfig.logfile,
+    format=AceConfig.logfmt,
+    datefmt=AceConfig.logdatefmt)
 logger = logging.getLogger('INIT')
 
 # Loading plugins

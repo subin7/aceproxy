@@ -27,5 +27,5 @@ class Stat(AceProxyPlugin):
             '<h5>Concurrent connections limit: ' + str(self.config.maxconns) + '</h5>')
         for i in self.stuff.clientcounter.clients:
             for c in self.stuff.clientcounter.clients[i]:
-                connection.wfile.write(c.clientip + ': ' + c.path_unquoted + '<br />')
+                connection.wfile.write(c.handler.clientip + ': ' + c.handler.path_unquoted + '<br />')
         connection.wfile.write('</body></html>')

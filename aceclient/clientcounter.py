@@ -23,6 +23,7 @@ class ClientCounter(object):
     def add(self, cid, client):
         with self.lock:
             clients = self.clients.get(cid)
+            self.total += 1
             
             if clients:
                 client.ace = clients[0].ace
@@ -39,7 +40,6 @@ class ClientCounter(object):
                 clients = [client]
                 self.clients[cid] = clients
                     
-            self.total += 1
             return len(clients)
 
     def delete(self, cid, client):
@@ -49,41 +49,51 @@ class ClientCounter(object):
             
             clients = self.clients[cid]
             
-            if len(clients) > 1:
-                clients.remove(client)
-            else:
-                del self.clients[cid]
-                clients[0].ace.closeStreamReader()
-                
-                if self.idleace:
-                    client.ace.destroy()
-                else:
-                    client.ace.STOP()
-                    self.idleace = client.ace
-                    self.idleace._idleSince = time.time()
-
-            client.closeConnection()
-            self.total -= 1
-
-    def deleteAll(self, cid):
-        with self.lock:
-            if not self.clients.has_key(cid):
+            if client not in clients:
                 return
             
-            clients = self.clients[cid]
-            del self.clients[cid]
-            self.total -= len(clients)
-            clients[0].ace.closeStreamReader()
-            
-            for c in clients:
-                c.closeConnection()
-            
-            if self.idleace:
-                clients[0].ace.destroy()
-            else:
-                clients[0].ace.STOP()
-                self.idleace = clients[0].ace
-                self.idleace._idleSince = time.time()
+            try:
+                if len(clients) > 1:
+                    clients.remove(client)
+                else:
+                    del self.clients[cid]
+                    clients[0].ace.closeStreamReader()
+                    
+                    if self.idleace:
+                        client.ace.destroy()
+                    else:
+                        client.ace.STOP()
+                        self.idleace = client.ace
+                        self.idleace._idleSince = time.time()
+                        self.idleace._streamReaderState = None
+            finally:
+                self.total -= 1
+
+    def deleteAll(self, cid):
+        clients = None
+        
+        try:
+            with self.lock:
+                if not self.clients.has_key(cid):
+                    return
+                
+                clients = self.clients[cid]
+                del self.clients[cid]
+                self.total -= len(clients)
+                clients[0].ace.closeStreamReader()
+    
+                if self.idleace:
+                    clients[0].ace.destroy()
+                else:
+                    clients[0].ace.STOP()
+                    self.idleace = clients[0].ace
+                    self.idleace._idleSince = time.time()
+                    self.idleace._streamReaderState = None
+        finally:
+            if clients:
+                for c in clients:
+                    c.destroy()
+
 
     def createAce(self):
         logger = logging.getLogger('createAce')
