@@ -30,7 +30,7 @@ import config.p2pproxy as config
 
 
 class P2pproxy(AceProxyPlugin):
-    handlers = ('channels', 'archive', 'xbmc.pvr')
+    handlers = ('channels', 'archive', 'xbmc.pvr', 'logos')
 
     logger = logging.getLogger('plugin_p2pproxy')
 
@@ -307,6 +307,26 @@ class P2pproxy(AceProxyPlugin):
                     connection.send_header('Content-Length', str(len(records_list)))
                     connection.end_headers()
                     connection.wfile.write(records_list)
+        elif connection.reqtype == 'logos': # Used to generate logomap for the torrenttv plugin
+            session = TorrentTvApi.auth(config.email, config.password)
+            translations_list = TorrentTvApi.translations(session, 'all')
+            last = translations_list[-1]
+            connection.send_response(200)
+            connection.send_header('Content-Type', 'text/plain;charset=utf-8')
+            connection.end_headers()
+            connection.wfile.write("logobase = 'http://torrent-tv.ru/uploads/'\n")
+            connection.wfile.write("logomap = {\n")
+            
+            for channel in translations_list:
+                name = channel.getAttribute('name').encode('utf-8')
+                logo = channel.getAttribute('logo').encode('utf-8')
+                connection.wfile.write("    u'%s': logobase + '%s'" % (name, logo))
+                if not channel == last:
+                    connection.wfile.write(",\n")
+                else:
+                    connection.wfile.write("\n")
+                
+            connection.wfile.write("}\n")
 
     def get_param(self, key):
         if key in self.params:
