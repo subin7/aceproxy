@@ -23,6 +23,8 @@ import SocketServer
 from socket import error as SocketException
 from socket import SHUT_RDWR
 from collections import deque
+import base64
+import json
 import time
 import threading
 import urllib2
@@ -387,7 +389,21 @@ class HTTPHandler(BaseHTTPServer.BaseHTTPRequestHandler):
                     with AceStuff.clientcounter.lock:
                         if not AceStuff.clientcounter.idleace:
                             AceStuff.clientcounter.idleace = AceStuff.clientcounter.createAce()
-                        cid = AceStuff.clientcounter.idleace.GETCID(reqtype, url)
+                        try:
+                            cid = AceStuff.clientcounter.idleace.GETCID(reqtype, url)
+                        except:
+                            pass
+                        
+                        if cid == '':
+                            try:
+                                logging.debug("Failed to get CID from engine. Trying WEB API.")
+                                req = urllib2.Request(url, headers={'User-Agent' : "Magic Browser"})
+                                f = urllib2.urlopen(req, timeout=3).read()
+                                req = urllib2.Request('http://api.torrentstream.net/upload/raw', base64.b64encode(f))
+                                req.add_header('Content-Type', 'application/octet-stream')
+                                cid = json.loads(urllib2.urlopen(req, timeout=3).read())['content_id']
+                            except:
+                                logging.debug("Failed to get CID from WEB API")
         
         return url if cid == '' else cid
 
