@@ -62,10 +62,13 @@ class ClientCounter(object):
                     if self.idleace:
                         client.ace.destroy()
                     else:
-                        client.ace.STOP()
-                        self.idleace = client.ace
-                        self.idleace._idleSince = time.time()
-                        self.idleace._streamReaderState = None
+                        try:
+                            client.ace.STOP()
+                            self.idleace = client.ace
+                            self.idleace._idleSince = time.time()
+                            self.idleace._streamReaderState = None
+                        except:
+                            client.ace.destroy()
             finally:
                 self.total -= 1
 
@@ -85,10 +88,13 @@ class ClientCounter(object):
                 if self.idleace:
                     clients[0].ace.destroy()
                 else:
-                    clients[0].ace.STOP()
-                    self.idleace = clients[0].ace
-                    self.idleace._idleSince = time.time()
-                    self.idleace._streamReaderState = None
+                    try:
+                        clients[0].ace.STOP()
+                        self.idleace = clients[0].ace
+                        self.idleace._idleSince = time.time()
+                        self.idleace._streamReaderState = None
+                    except:
+                        clients[0].ace.destroy()
         finally:
             if clients:
                 for c in clients:
