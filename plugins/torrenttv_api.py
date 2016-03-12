@@ -3,13 +3,15 @@
 Torrent-TV API communication class
 Forms requests to API, checks result for errors and returns in desired form (lists or raw data)
 """
+from unittest.signals import _results
 __author__ = 'miltador'
 
 import urllib2
 import socket
 import random
 import xml.dom.minidom as dom
-
+import logging
+import time
 
 class TorrentTvApiException(Exception):
     """
@@ -33,6 +35,12 @@ class TorrentTvApi(object):
         11: 'Региональные',
         12: 'Религиозные'
     }
+    
+    session = None
+    sessionMaxIdle = 600
+    sessionLastActive = 0.0
+    sessionEmail = None
+    sessionPassword = None
 
     @staticmethod
     def auth(email, password, raw=False):
@@ -45,13 +53,26 @@ class TorrentTvApi(object):
         :param raw: if True returns unprocessed data
         :return: unique session string
         """
+        session = TorrentTvApi.session
+        sessionLastActive = TorrentTvApi.sessionLastActive
+        if session and (time.time() - sessionLastActive) < TorrentTvApi.sessionMaxIdle:
+            TorrentTvApi.sessionLastActive = time.time()
+            logging.debug("Reusing previous session: " + session)
+            return session
         
+        logging.debug("Creating new session")
+        TorrentTvApi.session = None
         xmlresult = TorrentTvApi._result(
              'v3/auth.php?username=' + email + '&password=' + password + '&application=tsproxy&guid=' + str(random.randint(100000000,199999999)))
         if raw:
             return xmlresult
         res = TorrentTvApi._check(xmlresult)
         session = res.getElementsByTagName('session')[0].firstChild.data
+        TorrentTvApi.session = session
+        TorrentTvApi.sessionEmail = email
+        TorrentTvApi.sessionPassword - password
+        TorrentTvApi.sessionLastActive = time.time()
+        logging.debug("New session created: " + session)
         return session
 
     @staticmethod
@@ -65,11 +86,22 @@ class TorrentTvApi(object):
         :param raw: if True returns unprocessed data
         :return: translations list
         """
-        xmlresult = TorrentTvApi._result(
-            'v3/translation_list.php?session=' + session + '&type=' + translation_type)
+        
         if raw:
-            return xmlresult
-        res = TorrentTvApi._check(xmlresult)
+            try:
+                xmlresult = TorrentTvApi._result(
+                                'v3/translation_list.php?session=' + session + '&type=' + translation_type)
+                TorrentTvApi._check(xmlresult)
+                return xmlresult
+            except TorrentTvApiException:
+                TorrentTvApi._resetSession()
+                xmlresult = TorrentTvApi._result(
+                                'v3/translation_list.php?session=' + session + '&type=' + translation_type)
+                TorrentTvApi._check(xmlresult)
+                return xmlresult
+            
+        res = TorrentTvApi._checkedresult(
+            'v3/translation_list.php?session=' + session + '&type=' + translation_type)
         translationslist = res.getElementsByTagName('channel')
         return translationslist
 
@@ -84,11 +116,22 @@ class TorrentTvApi(object):
         :param raw: if True returns unprocessed data
         :return: records list
         """
-        xmlresult = TorrentTvApi._result(
-            'v3/arc_records.php?session=' + session + '&channel_id=' + channel_id + '&date=' + date)
+        
         if raw:
-            return xmlresult
-        res = TorrentTvApi._check(xmlresult)
+            try:
+                xmlresult = TorrentTvApi._result(
+                                'v3/arc_records.php?session=' + session + '&channel_id=' + channel_id + '&date=' + date)
+                TorrentTvApi._check(xmlresult)
+                return xmlresult
+            except TorrentTvApiException:
+                TorrentTvApi._resetSession()
+                xmlresult = TorrentTvApi._result(
+                                'v3/arc_records.php?session=' + session + '&channel_id=' + channel_id + '&date=' + date)
+                TorrentTvApi._check(xmlresult)
+                return xmlresult
+            
+        res = TorrentTvApi._checkedresult(
+            'v3/arc_records.php?session=' + session + '&channel_id=' + channel_id + '&date=' + date)
         recordslist = res.getElementsByTagName('channel')
         return recordslist
 
@@ -101,11 +144,18 @@ class TorrentTvApi(object):
         :param raw: if True returns unprocessed data
         :return: archive channels list
         """
-        xmlresult = TorrentTvApi._result(
-            'v3/arc_list.php?session=' + session)
         if raw:
-            return xmlresult
-        res = TorrentTvApi._check(xmlresult)
+            try:
+                xmlresult = TorrentTvApi._result('v3/arc_list.php?session=' + session)
+                TorrentTvApi._check(xmlresult)
+                return xmlresult
+            except TorrentTvApiException:
+                TorrentTvApi._resetSession()
+                xmlresult = TorrentTvApi._result('v3/arc_list.php?session=' + session)
+                TorrentTvApi._check(xmlresult)
+                return xmlresult
+
+        res = TorrentTvApi._checkedresult('v3/arc_list.php?session=' + session)
         archive_channelslist = res.getElementsByTagName('channel')
         return archive_channelslist
 
@@ -118,9 +168,8 @@ class TorrentTvApi(object):
         :param channel_id: id of channel in translations list (see translations() method)
         :return: type of stream and source
         """
-        xmlresult = TorrentTvApi._result(
+        res = TorrentTvApi._checkedresult(
             'v3/translation_stream.php?session=' + session + '&channel_id=' + channel_id)
-        res = TorrentTvApi._check(xmlresult)
         stream_type = res.getElementsByTagName('type')[0].firstChild.data
         source = res.getElementsByTagName('source')[0].firstChild.data
         return stream_type.encode('utf-8'), source.encode('utf-8')
@@ -134,9 +183,8 @@ class TorrentTvApi(object):
         :param record_id: id of record in records list (see records() method)
         :return: type of stream and source
         """
-        xmlresult = TorrentTvApi._result(
+        res = TorrentTvApi._checkedresult(
             'v3/arc_stream.php?session=' + session + '&record_id=' + record_id)
-        res = TorrentTvApi._check(xmlresult)
         stream_type = res.getElementsByTagName('type')[0].firstChild.data
         source = res.getElementsByTagName('source')[0].firstChild.data
         return stream_type.encode('utf-8'), source.encode('utf-8')
@@ -159,6 +207,14 @@ class TorrentTvApi(object):
         return res
 
     @staticmethod
+    def _checkedresult(request):
+        try:
+            return TorrentTvApi._check(TorrentTvApi._result(request))
+        except TorrentTvApiException:
+            TorrentTvApi._resetSession()
+            return TorrentTvApi._check(TorrentTvApi._result(request))
+
+    @staticmethod
     def _result(request):
         """
         Sends request to API and returns the result in form of string
@@ -172,3 +228,8 @@ class TorrentTvApi(object):
             return result
         except (urllib2.URLError, socket.timeout) as e:
             raise TorrentTvApiException('Error happened while trying to access API: ' + repr(e))
+
+    @staticmethod
+    def _resetSession():
+        TorrentTvApi.session = None
+        TorrentTvApi.auth(TorrentTvApi.sessionEmail, TorrentTvApi.sessionPassword)
