@@ -70,7 +70,7 @@ class TorrentTvApi(object):
         session = res.getElementsByTagName('session')[0].firstChild.data
         TorrentTvApi.session = session
         TorrentTvApi.sessionEmail = email
-        TorrentTvApi.sessionPassword - password
+        TorrentTvApi.sessionPassword = password
         TorrentTvApi.sessionLastActive = time.time()
         logging.debug("New session created: " + session)
         return session
