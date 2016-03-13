@@ -37,6 +37,7 @@ class P2pproxy(AceProxyPlugin):
     def __init__(self, AceConfig, AceStuff):
         super(P2pproxy, self).__init__(AceConfig, AceStuff)
         self.params = None
+        self.api = TorrentTvApi(config.email, config.password, config.sessiontimeout)
 
     def handle(self, connection, headers_only=False):
         P2pproxy.logger.debug('Handling request')
@@ -74,8 +75,7 @@ class P2pproxy(AceProxyPlugin):
 
                 stream_url = None
 
-                session = TorrentTvApi.auth(config.email, config.password)
-                stream_type, stream = TorrentTvApi.stream_source(session, channel_id)
+                stream_type, stream = self.api.stream_source(channel_id)
 
                 if stream_type == 'torrent':
                     stream_url = re.sub('^(http.+)$',
@@ -101,8 +101,7 @@ class P2pproxy(AceProxyPlugin):
                 if not param_filter:
                     param_filter = 'all'  # default filter
 
-                session = TorrentTvApi.auth(config.email, config.password)
-                translations_list = TorrentTvApi.translations(session, param_filter)
+                translations_list = self.api.translations(param_filter)
 
                 playlistgen = PlaylistGenerator()
                 P2pproxy.logger.debug('Generating requested m3u playlist')
@@ -144,8 +143,7 @@ class P2pproxy(AceProxyPlugin):
                 if not param_filter:
                     param_filter = 'all'  # default filter
 
-                session = TorrentTvApi.auth(config.email, config.password)
-                translations_list = TorrentTvApi.translations(session, param_filter, True)
+                translations_list = self.api.translations(param_filter, True)
 
                 P2pproxy.logger.debug('Exporting')
                 connection.send_response(200)
@@ -167,8 +165,7 @@ class P2pproxy(AceProxyPlugin):
                 if not headers_only:
                     return
                 
-                session = TorrentTvApi.auth(config.email, config.password)
-                translations_list = TorrentTvApi.translations(session, 'all', True)
+                translations_list = self.api.translations('all', True)
                 P2pproxy.logger.debug('Exporting')
                 connection.wfile.write(translations_list)
         elif connection.reqtype == 'archive':  # /archive/ branch
@@ -181,8 +178,7 @@ class P2pproxy(AceProxyPlugin):
                 if headers_only:
                     connection.end_headers()
                 else:
-                    session = TorrentTvApi.auth(config.email, config.password)
-                    archive_channels = TorrentTvApi.archive_channels(session, True)
+                    archive_channels = self.api.archive_channels(True)
                     P2pproxy.logger.debug('Exporting')
                     connection.send_header('Content-Length', str(len(archive_channels)))
                     connection.end_headers()
@@ -202,8 +198,7 @@ class P2pproxy(AceProxyPlugin):
 
                 stream_url = None
 
-                session = TorrentTvApi.auth(config.email, config.password)
-                stream_type, stream = TorrentTvApi.archive_stream_source(session, record_id)
+                stream_type, stream = self.api.archive_stream_source(record_id)
 
                 if stream_type == 'torrent':
                     stream_url = re.sub('^(http.+)$',
@@ -242,9 +237,8 @@ class P2pproxy(AceProxyPlugin):
                     connection.end_headers()
                     return
 
-                session = TorrentTvApi.auth(config.email, config.password)
-                records_list = TorrentTvApi.records(session, param_channel, d.strftime('%d-%m-%Y'))
-                channels_list = TorrentTvApi.archive_channels(session)
+                records_list = self.api.records(param_channel, d.strftime('%d-%m-%Y'))
+                channels_list = self.api.archive_channels()
                 playlistgen = PlaylistGenerator()
                 P2pproxy.logger.debug('Generating archive m3u playlist')
                 
@@ -301,15 +295,13 @@ class P2pproxy(AceProxyPlugin):
                 if headers_only:
                     connection.end_headers()
                 else:
-                    session = TorrentTvApi.auth(config.email, config.password)
-                    records_list = TorrentTvApi.records(session, param_channel, d.strftime('%d-%m-%Y'), True)
+                    records_list = self.api.records(param_channel, d.strftime('%d-%m-%Y'), True)
                     P2pproxy.logger.debug('Exporting')
                     connection.send_header('Content-Length', str(len(records_list)))
                     connection.end_headers()
                     connection.wfile.write(records_list)
         elif connection.reqtype == 'logos': # Used to generate logomap for the torrenttv plugin
-            session = TorrentTvApi.auth(config.email, config.password)
-            translations_list = TorrentTvApi.translations(session, 'all')
+            translations_list = self.api.translations('all')
             last = translations_list[-1]
             connection.send_response(200)
             connection.send_header('Content-Type', 'text/plain;charset=utf-8')
