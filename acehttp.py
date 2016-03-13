@@ -258,7 +258,8 @@ class HTTPHandler(BaseHTTPServer.BaseHTTPRequestHandler):
         
         self.url = None
         self.path_unquoted = urllib2.unquote(self.splittedpath[2])
-        cid = self.getCid(self.reqtype, self.path_unquoted)
+        contentid = self.getCid(self.reqtype, self.path_unquoted)
+        cid = contentid if contentid else self.path_unquoted
         logger.debug("CID: " + cid)
         self.client = Client(cid, self)
         self.vlcid = cid
@@ -281,7 +282,9 @@ class HTTPHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 
             # Initializing AceClient
             if shouldStart:
-                if self.reqtype == 'pid':
+                if contentid:
+                    self.client.ace.START('PID', {'content_id': contentid})
+                elif self.reqtype == 'pid':
                     self.client.ace.START(
                         self.reqtype, {'content_id': self.path_unquoted, 'file_indexes': self.params[0]})
                 elif self.reqtype == 'torrent':
@@ -405,7 +408,7 @@ class HTTPHandler(BaseHTTPServer.BaseHTTPRequestHandler):
                             except:
                                 logging.debug("Failed to get CID from WEB API")
         
-        return url if cid == '' else cid
+        return None if not cid or cid == '' else cid
 
 
 class HTTPServer(SocketServer.ThreadingMixIn, BaseHTTPServer.HTTPServer):
