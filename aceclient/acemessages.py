@@ -92,8 +92,7 @@ class AceMessage(object):
                     str(params_dict.get('file_indexes', '0')) + ' ' + \
                     str(params_dict.get('developer_id', '0')) + ' ' + \
                     str(params_dict.get('affiliate_id', '0')) + ' ' + \
-                    str(params_dict.get('zone_id', '0')) + ' ' + \
-                    str(params_dict.get('stream_id', '0'))
+                    str(params_dict.get('zone_id', '0'))
 
             elif command == 'PID':
                 return 'START PID ' + str(params_dict.get('content_id')) + ' ' + \

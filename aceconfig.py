@@ -144,7 +144,7 @@ class AceConfig(acedefconfig.AceDefConfig):
     # video stream delay.
     # Set it to 30 or so.
     # Works only with the newest versions of AceEngine!
-    videoseekback = 30
+    videoseekback = 0
     # Delay before closing Ace Stream connection when client disconnects
     # In seconds.
     videodestroydelay = 0

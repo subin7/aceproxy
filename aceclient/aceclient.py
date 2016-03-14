@@ -114,6 +114,11 @@ class AceClient(object):
         finally:
             self._shuttingDown.set()
 
+    def reset(self):
+        self._started_again = False
+        self._idleSince = time.time()
+        self._streamReaderState = None
+
     def _write(self, message):
         try:
             logger = logging.getLogger("AceClient_write")
@@ -178,11 +183,13 @@ class AceClient(object):
             self._write(AceMessage.request.STOP)
             self._getResult()
 
-    def GETCID(self, datatype, url):
+    def LOADASYNC(self, datatype, url):
         self._result = AsyncResult()
         self._write(AceMessage.request.LOADASYNC(datatype.upper(), 0, {'url': url}))
-        contentinfo = self._getResult()
-        
+        return self._getResult()
+
+    def GETCID(self, datatype, url):
+        contentinfo = self.LOADASYNC(datatype, url)
         self._cidresult = AsyncResult()
         self._write(AceMessage.request.GETCID(contentinfo.get('checksum'), contentinfo.get('infohash'), 0, 0, 0))
         cid = self._cidresult.get(True, 5)
@@ -341,7 +348,7 @@ class AceClient(object):
 
                 elif self._recvbuffer.startswith(AceMessage.response.START):
                     # START
-                    if not self._seekback or (self._seekback and self._started_again):
+                    if not self._seekback or self._started_again or not self._recvbuffer.endswith(' stream=1'):
                         # If seekback is disabled, we use link in first START command.
                         # If seekback is enabled, we wait for first START command and
                         # ignore it, then do seeback in first EVENT position command
@@ -353,6 +360,8 @@ class AceClient(object):
                             self._resumeevent.set()
                         except IndexError as e:
                             self._url = None
+                    else:
+                        logger.debug("START received. Waiting for %s." % AceMessage.response.LIVEPOS)
 
                 elif self._recvbuffer.startswith(AceMessage.response.STOP):
                     pass

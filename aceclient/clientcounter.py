@@ -65,8 +65,7 @@ class ClientCounter(object):
                         try:
                             client.ace.STOP()
                             self.idleace = client.ace
-                            self.idleace._idleSince = time.time()
-                            self.idleace._streamReaderState = None
+                            self.idleace.reset()
                         except:
                             client.ace.destroy()
             finally:
@@ -91,8 +90,7 @@ class ClientCounter(object):
                     try:
                         clients[0].ace.STOP()
                         self.idleace = clients[0].ace
-                        self.idleace._idleSince = time.time()
-                        self.idleace._streamReaderState = None
+                        self.idleace.reset()
                     except:
                         clients[0].ace.destroy()
         finally:
