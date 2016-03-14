@@ -393,20 +393,20 @@ class HTTPHandler(BaseHTTPServer.BaseHTTPRequestHandler):
                         if not AceStuff.clientcounter.idleace:
                             AceStuff.clientcounter.idleace = AceStuff.clientcounter.createAce()
                         try:
-                            cid = AceStuff.clientcounter.idleace.GETCID(reqtype, url)
+                            req = urllib2.Request(url, headers={'User-Agent' : "Magic Browser"})
+                            f = base64.b64encode(urllib2.urlopen(req, timeout=5).read())
+                            req = urllib2.Request('http://api.torrentstream.net/upload/raw', f)
+                            req.add_header('Content-Type', 'application/octet-stream')
+                            cid = json.loads(urllib2.urlopen(req, timeout=3).read())['content_id']                            
                         except:
                             pass
                         
                         if cid == '':
                             try:
-                                logging.debug("Failed to get CID from engine. Trying WEB API.")
-                                req = urllib2.Request(url, headers={'User-Agent' : "Magic Browser"})
-                                f = urllib2.urlopen(req, timeout=3).read()
-                                req = urllib2.Request('http://api.torrentstream.net/upload/raw', base64.b64encode(f))
-                                req.add_header('Content-Type', 'application/octet-stream')
-                                cid = json.loads(urllib2.urlopen(req, timeout=3).read())['content_id']
-                            except:
                                 logging.debug("Failed to get CID from WEB API")
+                                cid = AceStuff.clientcounter.idleace.GETCID(reqtype, url)
+                            except:
+                                logging.debug("Failed to get CID from engine")
         
         return None if not cid or cid == '' else cid
 
