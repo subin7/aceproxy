@@ -46,18 +46,20 @@ class PlaylistGenerator(object):
         Exports m3u playlist
         '''
         
+        if add_ts:
+            # Adding ts:// after http:// for some players
+            hostport = 'ts://' + hostport
+            
         if header is None:
             if not empty_header:
                 itemlist = config.m3uheader
             else:
                 itemlist = config.m3uemptyheader
-                if add_ts:
-                    # Adding ts:// after http:// for some players
-                    hostport = 'ts://' + hostport
         else:
             itemlist = header
         
-        for item in self.itemlist:
+        for i in self.itemlist:
+            item = i.copy()
             item['tvg'] = item.get('tvg', '') if item.get('tvg') else \
                 item.get('name').replace(' ', '_')
             # For .acelive and .torrent
