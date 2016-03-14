@@ -23,7 +23,6 @@ class ClientCounter(object):
     def add(self, cid, client):
         with self.lock:
             clients = self.clients.get(cid)
-            self.total += 1
             
             if clients:
                 client.ace = clients[0].ace
@@ -35,11 +34,16 @@ class ClientCounter(object):
                     client.ace = self.idleace
                     self.idleace = None
                 else:
-                    client.ace = self.createAce()
+                    try:
+                        client.ace = self.createAce()
+                    except Exception as e:
+                        logging.error('Failed to create AceClient: ' + repr(e))
+                        raise e
                 
                 clients = [client]
                 self.clients[cid] = clients
                     
+            self.total += 1
             return len(clients)
 
     def delete(self, cid, client):

@@ -52,11 +52,15 @@ class Torrenttv(AceProxyPlugin):
                 itemdict = match.groupdict()
                 name = itemdict.get('name').decode('UTF-8')
                 logo = config.logomap.get(name)
-                if logo is not None:
-                    itemdict['logo'] = logo
+                url = itemdict['url']
                 self.playlist.addItem(itemdict)
-                self.channels[str(counter)] = itemdict['url']
-                itemdict['url'] = str(counter)
+                
+                if logo:
+                    itemdict['logo'] = logo
+                
+                if url.startswith('http://') and url.endswith('.acelive'):
+                    self.channels[str(counter)] = url
+                    itemdict['url'] = str(counter)
         except:
             self.logger.error("Can't download playlist!")
             return False
@@ -88,7 +92,11 @@ class Torrenttv(AceProxyPlugin):
                 if headers_only:
                     return
                 
-                hostport = connection.headers['Host'] + '/torrenttv'
+                if len(self.channels) == 0:
+                    hostport = connection.headers['Host']
+                else:
+                    hostport = connection.headers['Host'] + '/torrenttv'
+
                 add_ts = True if url.path.endswith('/ts')  else False
                 header = '#EXTM3U url-tvg="%s" tvg-shift=%d\n' %(config.tvgurl, config.tvgshift)
                 connection.wfile.write(self.playlist.exportm3u(hostport, add_ts=add_ts, header=header))
