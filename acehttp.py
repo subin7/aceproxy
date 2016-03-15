@@ -375,10 +375,15 @@ class HTTPHandler(BaseHTTPServer.BaseHTTPRequestHandler):
             self.dieWithError()
         finally:
             try:
-                AceStuff.clientcounter.delete(cid, self.client)
+                remaining = AceStuff.clientcounter.delete(cid, self.client)
                 self.client.destroy()
                 self.ace = None
                 self.client = None
+                if AceConfig.vlcuse and remaining == 0:
+                    try:
+                        AceStuff.vlcclient.stopBroadcast(self.vlcid)
+                    except:
+                        pass
                 logger.debug("END REQUEST")
             except:
                 logger.error(traceback.format_exc())

@@ -49,16 +49,17 @@ class ClientCounter(object):
     def delete(self, cid, client):
         with self.lock:
             if not self.clients.has_key(cid):
-                return
+                return 0
             
             clients = self.clients[cid]
             
             if client not in clients:
-                return
+                return len(clients)
             
             try:
                 if len(clients) > 1:
                     clients.remove(client)
+                    return len(clients)
                 else:
                     del self.clients[cid]
                     clients[0].ace.closeStreamReader()
@@ -72,6 +73,8 @@ class ClientCounter(object):
                             self.idleace.reset()
                         except:
                             client.ace.destroy()
+                    
+                    return 0
             finally:
                 self.total -= 1
 

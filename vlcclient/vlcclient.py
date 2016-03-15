@@ -104,7 +104,7 @@ class VlcClient(object):
 
         try:
             # Write message
-            self._socket.write(message + "\r\n")
+            self._socket.write(message.encode("UTF8") + "\r\n")
         except EOFError as e:
             raise VlcException("Vlc Write error! ERROR: " + repr(e))
 
