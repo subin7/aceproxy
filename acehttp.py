@@ -214,7 +214,7 @@ class HTTPHandler(BaseHTTPServer.BaseHTTPRequestHandler):
                 return
         self.handleRequest(headers_only)
 
-    def handleRequest(self, headers_only):
+    def handleRequest(self, headers_only, channelName=None, channelIcon=None):
         logger = logging.getLogger('handleRequest')
         
         # Check if third parameter exists
@@ -262,7 +262,7 @@ class HTTPHandler(BaseHTTPServer.BaseHTTPRequestHandler):
         contentid = self.getCid(self.reqtype, self.path_unquoted)
         cid = contentid if contentid else self.path_unquoted
         logger.debug("CID: " + cid)
-        self.client = Client(cid, self)
+        self.client = Client(cid, self, channelName, channelIcon)
         self.vlcid = urllib.quote_plus(cid)
         shouldStart = AceStuff.clientcounter.add(cid, self.client) == 1
 
@@ -426,9 +426,11 @@ class HTTPServer(SocketServer.ThreadingMixIn, BaseHTTPServer.HTTPServer):
 
 class Client:
     
-    def __init__(self, cid, handler):
+    def __init__(self, cid, handler, channelName, channelIcon):
         self.cid = cid
         self.handler = handler
+        self.channelName=channelName
+        self.channelIcon=channelIcon
         self.ace = None
         self.lock = threading.Condition(threading.Lock())
         self.queue = deque()

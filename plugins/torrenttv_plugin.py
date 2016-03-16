@@ -63,7 +63,7 @@ class Torrenttv(AceProxyPlugin):
                 
                 if url.startswith('http://') and url.endswith('.acelive'):
                     num = str(counter)
-                    self.channels[num] = url
+                    self.channels[num] = [name, url]
                     itemdict['url'] = num
                     
                 m.update(itemdict.get('name'))
@@ -92,7 +92,8 @@ class Torrenttv(AceProxyPlugin):
             
             if url.path.endswith('/play'):
                 cid = urlparse.parse_qs(url.query)['id'][0]
-                connection.path = '/torrent/' + urllib2.quote(self.channels[cid], '') + '/stream.mp4'
+                channel = self.channels[cid]
+                connection.path = '/torrent/' + urllib2.quote(channel[1], '') + '/stream.mp4'
                 connection.splittedpath = connection.path.split('/')
                 connection.reqtype = 'torrent'
                 play = True
@@ -120,6 +121,6 @@ class Torrenttv(AceProxyPlugin):
                 connection.end_headers()
         
         if play:
-            connection.handleRequest(headers_only)
+            connection.handleRequest(headers_only, channel[0], config.logomap.get(channel[0]))
         elif not headers_only:
             connection.wfile.write(exported)
