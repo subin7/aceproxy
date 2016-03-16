@@ -5,6 +5,7 @@ import threading
 import logging
 import time
 import aceclient
+import gevent
 from aceconfig import AceConfig
 
 class ClientCounter(object):
@@ -14,7 +15,7 @@ class ClientCounter(object):
         self.clients = dict()
         self.idleace = None
         self.total = 0
-        threading.Timer(60.0, self.checkIdle).start()
+        gevent.spawn(self.checkIdle)
     
     def getClients(self, cid):
         with self.lock:
@@ -105,7 +106,6 @@ class ClientCounter(object):
                 for c in clients:
                     c.destroy()
 
-
     def createAce(self):
         logger = logging.getLogger('createAce')
         ace = aceclient.AceClient(
@@ -120,10 +120,11 @@ class ClientCounter(object):
         return ace
     
     def checkIdle(self):
-        with self.lock:
-            ace = self.idleace
-            if ace and (ace._idleSince + 5.0 >= time.time()):
-                self.idleace = None
-                ace.destroy()
+        while(True):
+            gevent.sleep(60.0)
+            with self.lock:
+                ace = self.idleace
+                if ace and (ace._idleSince + 60.0 >= time.time()):
+                    self.idleace = None
+                    ace.destroy()
         
-        threading.Timer(60.0, self.checkIdle).start()
