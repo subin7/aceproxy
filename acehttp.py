@@ -27,6 +27,7 @@ import base64
 import json
 import time
 import threading
+import urllib
 import urllib2
 import Queue
 import aceclient
@@ -262,7 +263,7 @@ class HTTPHandler(BaseHTTPServer.BaseHTTPRequestHandler):
         cid = contentid if contentid else self.path_unquoted
         logger.debug("CID: " + cid)
         self.client = Client(cid, self)
-        self.vlcid = cid
+        self.vlcid = urllib.quote_plus(cid)
         shouldStart = AceStuff.clientcounter.add(cid, self.client) == 1
 
         # Send fake headers if this User-Agent is in fakeheaderuas tuple
