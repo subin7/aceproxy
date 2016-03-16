@@ -107,17 +107,19 @@ class TorrentTvApi(object):
         :param raw: if True returns unprocessed data
         :return: records list
         """
+        date = date.replace('-0', '-')
+        
         if raw:
             try:
-                res = self._xmlresult('arc_records.php', '&channel_id=' + channel_id + '&date=' + date)
+                res = self._xmlresult('arc_records.php', '&epg_id=' + channel_id + '&date=' + date)
                 self._checkxml(res)
                 return res
             except TorrentTvApiException:
-                res = self._xmlresult('arc_records.php', '&channel_id=' + channel_id + '&date=' + date)
+                res = self._xmlresult('arc_records.php', '&epg_id=' + channel_id + '&date=' + date)
                 self._checkxml(res)
                 return res
         else:
-            res = self._xmlresult('arc_records.php', '&channel_id=' + channel_id + '&date=' + date)
+            res = self._checkedxmlresult('arc_records.php', '&epg_id=' + channel_id + '&date=' + date)
             return res.getElementsByTagName('channel')
 
     def archive_channels(self, raw=False):
@@ -139,7 +141,7 @@ class TorrentTvApi(object):
                 self._checkxml(res)
                 return res
         else:
-            res = self._xmlresult('arc_list.php', '')
+            res = self._checkedxmlresult('arc_list.php', '')
             return res.getElementsByTagName('channel')
 
     def stream_source(self, channel_id):

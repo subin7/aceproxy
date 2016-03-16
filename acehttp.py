@@ -391,28 +391,28 @@ class HTTPHandler(BaseHTTPServer.BaseHTTPRequestHandler):
     
     def getCid(self, reqtype, url):
         cid = ''
-    
+
         if reqtype == 'torrent':
-            if url[:4].lower() == 'http' :
-                if url[-8:].lower() == '.acelive' :
-                    with AceStuff.clientcounter.lock:
-                        if not AceStuff.clientcounter.idleace:
-                            AceStuff.clientcounter.idleace = AceStuff.clientcounter.createAce()
-                        try:
-                            req = urllib2.Request(url, headers={'User-Agent' : "Magic Browser"})
-                            f = base64.b64encode(urllib2.urlopen(req, timeout=5).read())
-                            req = urllib2.Request('http://api.torrentstream.net/upload/raw', f)
-                            req.add_header('Content-Type', 'application/octet-stream')
-                            cid = json.loads(urllib2.urlopen(req, timeout=3).read())['content_id']                            
-                        except:
-                            pass
+            if url.startswith('http'):
+                if url.endswith('.acelive') or  url.endswith('.acestream'):
+                    try:
+                        req = urllib2.Request(url, headers={'User-Agent' : "Magic Browser"})
+                        f = base64.b64encode(urllib2.urlopen(req, timeout=5).read())
+                        req = urllib2.Request('http://api.torrentstream.net/upload/raw', f)
+                        req.add_header('Content-Type', 'application/octet-stream')
+                        cid = json.loads(urllib2.urlopen(req, timeout=3).read())['content_id']                            
+                    except:
+                        pass
                         
-                        if cid == '':
-                            try:
-                                logging.debug("Failed to get CID from WEB API")
+                    if cid == '':
+                        logging.debug("Failed to get CID from WEB API")
+                        try:
+                            with AceStuff.clientcounter.lock:
+                                if not AceStuff.clientcounter.idleace:
+                                    AceStuff.clientcounter.idleace = AceStuff.clientcounter.createAce()
                                 cid = AceStuff.clientcounter.idleace.GETCID(reqtype, url)
-                            except:
-                                logging.debug("Failed to get CID from engine")
+                        except:
+                            logging.debug("Failed to get CID from engine")
         
         return None if not cid or cid == '' else cid
 
