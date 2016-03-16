@@ -9,6 +9,8 @@ import time
 import gevent
 import threading
 import urlparse
+import md5
+import traceback
 from modules.PluginInterface import AceProxyPlugin
 from modules.PlaylistGenerator import PlaylistGenerator
 import config.torrenttv as config
@@ -25,6 +27,7 @@ class Torrenttv(AceProxyPlugin):
         self.channels = None
         self.playlist = None
         self.playlisttime = None
+        self.etag = None
         
         if config.updateevery:
             gevent.spawn(self.playlistTimedDownloader)
@@ -41,10 +44,10 @@ class Torrenttv(AceProxyPlugin):
             req = urllib2.Request(config.url, headers={'User-Agent' : "Magic Browser"})
             origin = urllib2.urlopen(req, timeout=10).read()
             matches = re.finditer(r',(?P<name>\S.+) \((?P<group>.+)\)\n(?P<url>^.+$)', origin, re.MULTILINE)
-    
             self.playlisttime = int(time.time())
             self.playlist = PlaylistGenerator()
             self.channels = dict()
+            m = md5.new()
             counter = 0
             
             for match in matches:
@@ -59,15 +62,24 @@ class Torrenttv(AceProxyPlugin):
                     itemdict['logo'] = logo
                 
                 if url.startswith('http://') and url.endswith('.acelive'):
-                    self.channels[str(counter)] = url
-                    itemdict['url'] = str(counter)
+                    num = str(counter)
+                    self.channels[num] = url
+                    itemdict['url'] = num
+                    
+                m.update(itemdict.get('name'))
+                m.update(itemdict['url'])
+            
+            self.etag = '"' + m.hexdigest() + '"'
         except:
             self.logger.error("Can't download playlist!")
+            self.logger.error(traceback.format_exc())
             return False
 
         return True
 
     def handle(self, connection, headers_only=False):
+        play = False
+        
         with self.lock:
             
             # 30 minutes cache
@@ -83,15 +95,14 @@ class Torrenttv(AceProxyPlugin):
                 connection.path = '/torrent/' + urllib2.quote(self.channels[cid], '') + '/stream.mp4'
                 connection.splittedpath = connection.path.split('/')
                 connection.reqtype = 'torrent'
-                connection.handleRequest(headers_only)
-            else:
-                connection.send_response(200)
-                connection.send_header('Content-Type', 'application/x-mpegurl')
+                play = True
+            elif self.etag == connection.headers.get('If-None-Match'):
+                self.logger.debug('ETag matches - returning 304')
+                connection.send_response(304)
+                connection.send_header('Connection', 'close')
                 connection.end_headers()
-        
-                if headers_only:
-                    return
-                
+                return
+            else:
                 if len(self.channels) == 0:
                     hostport = connection.headers['Host']
                 else:
@@ -99,4 +110,16 @@ class Torrenttv(AceProxyPlugin):
 
                 add_ts = True if url.path.endswith('/ts')  else False
                 header = '#EXTM3U url-tvg="%s" tvg-shift=%d\n' %(config.tvgurl, config.tvgshift)
-                connection.wfile.write(self.playlist.exportm3u(hostport, add_ts=add_ts, header=header))
+                exported = self.playlist.exportm3u(hostport, add_ts=add_ts, header=header)
+                
+                connection.send_response(200)
+                connection.send_header('Content-Type', 'application/x-mpegurl')
+                connection.send_header('ETag', self.etag)
+                connection.send_header('Content-Length', str(len(exported)))
+                connection.send_header('Connection', 'close')
+                connection.end_headers()
+        
+        if play:
+            connection.handleRequest(headers_only)
+        elif not headers_only:
+            connection.wfile.write(exported)
