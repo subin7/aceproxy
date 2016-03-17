@@ -15,7 +15,7 @@ class Stat(AceProxyPlugin):
 
     def handle(self, connection, headers_only=False):
         connection.send_response(200)
-        connection.send_header('Content-type', 'text/html')
+        connection.send_header('Content-type', 'text/html; charset=utf-8')
         connection.end_headers()
         
         if headers_only:
