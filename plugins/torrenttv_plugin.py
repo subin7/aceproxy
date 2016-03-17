@@ -48,12 +48,11 @@ class Torrenttv(AceProxyPlugin):
             self.playlist = PlaylistGenerator()
             self.channels = dict()
             m = md5.new()
-            counter = 0
             
             for match in matches:
-                counter += 1
                 itemdict = match.groupdict()
-                name = itemdict.get('name').decode('UTF-8')
+                encname = itemdict.get('name')
+                name = encname.decode('UTF-8')
                 logo = config.logomap.get(name)
                 url = itemdict['url']
                 self.playlist.addItem(itemdict)
@@ -62,12 +61,10 @@ class Torrenttv(AceProxyPlugin):
                     itemdict['logo'] = logo
                 
                 if url.startswith('http://') and url.endswith('.acelive'):
-                    num = str(counter)
-                    self.channels[num] = [name, url]
-                    itemdict['url'] = num
+                    self.channels[name] = url
+                    itemdict['url'] = urllib2.quote(encname, '')
                     
-                m.update(itemdict.get('name'))
-                m.update(itemdict['url'])
+                m.update(encname)
             
             self.etag = '"' + m.hexdigest() + '"'
         except:
@@ -90,10 +87,10 @@ class Torrenttv(AceProxyPlugin):
             
             url = urlparse.urlparse(connection.path)
             
-            if url.path.endswith('/play'):
-                cid = urlparse.parse_qs(url.query)['id'][0]
-                channel = self.channels[cid]
-                connection.path = '/torrent/' + urllib2.quote(channel[1], '') + '/stream.mp4'
+            if url.path.startswith('/torrenttv/channel/'):
+                name = urllib2.unquote(url.path[19:]).decode('UTF8')
+                url = self.channels[name]
+                connection.path = '/torrent/' + urllib2.quote(url, '') + '/stream.mp4'
                 connection.splittedpath = connection.path.split('/')
                 connection.reqtype = 'torrent'
                 play = True
@@ -104,14 +101,11 @@ class Torrenttv(AceProxyPlugin):
                 connection.end_headers()
                 return
             else:
-                if len(self.channels) == 0:
-                    hostport = connection.headers['Host']
-                else:
-                    hostport = connection.headers['Host'] + '/torrenttv'
-
+                hostport = connection.headers['Host']
+                path = '' if len(self.channels) == 0 else '/torrenttv/channel' 
                 add_ts = True if url.path.endswith('/ts')  else False
                 header = '#EXTM3U url-tvg="%s" tvg-shift=%d\n' %(config.tvgurl, config.tvgshift)
-                exported = self.playlist.exportm3u(hostport, add_ts=add_ts, header=header)
+                exported = self.playlist.exportm3u(hostport, path, add_ts=add_ts, header=header)
                 
                 connection.send_response(200)
                 connection.send_header('Content-Type', 'application/x-mpegurl')
@@ -121,6 +115,6 @@ class Torrenttv(AceProxyPlugin):
                 connection.end_headers()
         
         if play:
-            connection.handleRequest(headers_only, channel[0], config.logomap.get(channel[0]))
+            connection.handleRequest(headers_only, name, config.logomap.get(name))
         elif not headers_only:
             connection.wfile.write(exported)
