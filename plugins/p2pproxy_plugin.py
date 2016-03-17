@@ -30,8 +30,9 @@ import config.p2pproxy as config
 
 
 class P2pproxy(AceProxyPlugin):
+    TTV = 'http://torrent-tv.ru/'
+    TTVU = TTV + 'uploads/'
     handlers = ('channels', 'archive', 'xbmc.pvr', 'logos')
-
     logger = logging.getLogger('plugin_p2pproxy')
 
     def __init__(self, AceConfig, AceStuff):
@@ -116,7 +117,7 @@ class P2pproxy(AceProxyPlugin):
                     cid = channel.getAttribute('id')
                     logo = channel.getAttribute('logo')
                     if config.fullpathlogo:
-                        logo = 'http://torrent-tv.ru/uploads/' + logo
+                        logo = P2pproxy.TTVU + logo
 
                     fields = {'name': name, 'id': cid, 'url': cid, 'group': group, 'logo': logo}
                     fields['tvgid'] = config.tvgid %fields
@@ -225,40 +226,58 @@ class P2pproxy(AceProxyPlugin):
                         connection.dieWithError()
                         return
                     
-                param_channel = self.get_param('channel_id')
-                if param_channel == '' or not param_channel:
-                    P2pproxy.logger.error('Got /archive/ request but no channel_id specified!')
-                    connection.dieWithError()
-                    return
-                
                 if headers_only:
                     connection.send_response(200)
                     connection.send_header('Content-Type', 'application/x-mpegurl')
                     connection.end_headers()
                     return
 
-                records_list = self.api.records(param_channel, d.strftime('%d-%m-%Y'))
-                channels_list = self.api.archive_channels()
                 playlistgen = PlaylistGenerator()
-                P2pproxy.logger.debug('Generating archive m3u playlist')
+                param_channel = self.get_param('channel_id')
+                d = d.strftime('%d-%m-%Y').replace('-0', '-')
                 
-                for record in records_list:
-                    record_id = record.getAttribute('record_id')
-                    name = record.getAttribute('name')
-                    channel_id = record.getAttribute('channel_id')
-                    channel_name = ''
-                    logo = ''
+                if param_channel == '' or not param_channel:
+                    channels_list = self.api.archive_channels()
+                    
                     for channel in channels_list:
-                        if channel.getAttribute('channel_id') == channel_id:
-                            channel_name = channel.getAttribute('name')
-                            logo = channel.getAttribute('logo')
+                            channel_id = channel.getAttribute('epg_id')
+                            try:
+                                records_list = self.api.records(channel_id, d)
+                                channel_name = channel.getAttribute('name')
+                                logo = channel.getAttribute('logo')
+                                if logo != '' and config.fullpathlogo:
+                                    logo = P2pproxy.TTVU + logo
+                                
+                                for record in records_list:
+                                    name = record.getAttribute('name')
+                                    record_id = record.getAttribute('record_id')
+                                    playlistgen.addItem({'group': channel_name, 'tvg': '', 
+                                        'name': name, 'url': record_id, 'logo': logo})
+                            except:
+                                P2pproxy.logger.debug('Failed to load archive for ' + channel_id)
 
-                    if channel_name != '':
-                        name = '(' + channel_name + ') ' + name
-                    if logo != '' and config.fullpathlogo:
-                        logo = 'http://torrent-tv.ru/uploads/' + logo
-
-                    playlistgen.addItem({'name': name, 'url': record_id, 'logo': logo})
+                else:
+                    records_list = self.api.records(param_channel, d)
+                    channels_list = self.api.archive_channels()
+                    P2pproxy.logger.debug('Generating archive m3u playlist')
+                    
+                    for record in records_list:
+                        record_id = record.getAttribute('record_id')
+                        name = record.getAttribute('name')
+                        channel_id = record.getAttribute('channel_id')
+                        channel_name = ''
+                        logo = ''
+                        for channel in channels_list:
+                            if channel.getAttribute('channel_id') == channel_id:
+                                channel_name = channel.getAttribute('name')
+                                logo = channel.getAttribute('logo')
+    
+                        if channel_name != '':
+                            name = '(' + channel_name + ') ' + name
+                        if logo != '' and config.fullpathlogo:
+                            logo = P2pproxy.TTVU + logo
+    
+                        playlistgen.addItem({'name': name, 'url': record_id, 'logo': logo})
 
                 P2pproxy.logger.debug('Exporting')
                 exported = playlistgen.exportm3u(hostport, empty_header=True, archive=True)
@@ -266,6 +285,7 @@ class P2pproxy(AceProxyPlugin):
                 
                 connection.send_response(200)
                 connection.send_header('Content-Type', 'application/x-mpegurl')
+                connection.send_header('Content-Length', str(len(exported)))
                 connection.end_headers()
                 connection.wfile.write(exported)
             else:  # /archive/?date=[param_date]&channel_id=[param_channel]
@@ -306,7 +326,7 @@ class P2pproxy(AceProxyPlugin):
             connection.send_response(200)
             connection.send_header('Content-Type', 'text/plain;charset=utf-8')
             connection.end_headers()
-            connection.wfile.write("logobase = 'http://torrent-tv.ru/uploads/'\n")
+            connection.wfile.write("logobase = '" + P2pproxy.TTVU +"'\n")
             connection.wfile.write("logomap = {\n")
             
             for channel in translations_list:
