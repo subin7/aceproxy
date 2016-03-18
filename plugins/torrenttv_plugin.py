@@ -62,7 +62,7 @@ class Torrenttv(AceProxyPlugin):
                 
                 if url.startswith('http://') and url.endswith('.acelive'):
                     self.channels[name] = url
-                    itemdict['url'] = urllib2.quote(encname, '')
+                    itemdict['url'] = urllib2.quote(encname, '') +'.mp4'
                     
                 m.update(encname)
             
@@ -88,7 +88,7 @@ class Torrenttv(AceProxyPlugin):
             url = urlparse.urlparse(connection.path)
             
             if url.path.startswith('/torrenttv/channel/'):
-                name = urllib2.unquote(url.path[19:]).decode('UTF8')
+                name = urllib2.unquote(url.path[19:-4]).decode('UTF8')
                 url = self.channels[name]
                 connection.path = '/torrent/' + urllib2.quote(url, '') + '/stream.mp4'
                 connection.splittedpath = connection.path.split('/')
