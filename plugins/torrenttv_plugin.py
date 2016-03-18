@@ -14,6 +14,8 @@ import traceback
 from modules.PluginInterface import AceProxyPlugin
 from modules.PlaylistGenerator import PlaylistGenerator
 import config.torrenttv as config
+import config.p2pproxy as p2pconfig
+from torrenttv_api import TorrentTvApi
 
 
 class Torrenttv(AceProxyPlugin):
@@ -28,6 +30,8 @@ class Torrenttv(AceProxyPlugin):
         self.playlist = None
         self.playlisttime = None
         self.etag = None
+        self.logomap = config.logomap
+        self.updatelogos = p2pconfig.email != 're.place@me' and p2pconfig.password != 'ReplaceMe'
         
         if config.updateevery:
             gevent.spawn(self.playlistTimedDownloader)
@@ -71,6 +75,23 @@ class Torrenttv(AceProxyPlugin):
             self.logger.error("Can't download playlist!")
             self.logger.error(traceback.format_exc())
             return False
+        
+        if self.updatelogos:
+            try:
+                api = TorrentTvApi(p2pconfig.email, p2pconfig.password, p2pconfig.sessiontimeout)
+                translations = api.translations('all')
+                logos = dict()
+
+                for channel in translations:
+                    name = channel.getAttribute('name').encode('utf-8')
+                    logo = channel.getAttribute('logo').encode('utf-8')
+                    logos[name] = config.logobase + logo
+
+                self.logomap = logos
+                self.logger.debug("Logos updated")
+            except:
+                # p2pproxy plugin seems not configured
+                self.updatelogos = False
 
         return True
 
