@@ -17,6 +17,11 @@ class ClientCounter(object):
         self.total = 0
         gevent.spawn(self.checkIdle)
     
+    def count(self, cid):
+        with self.lock:
+            clients = self.clients.get(cid)
+            return len(clients) if clients else 0
+    
     def getClients(self, cid):
         with self.lock:
             return self.clients.get(cid)

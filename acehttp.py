@@ -374,6 +374,11 @@ class HTTPHandler(BaseHTTPServer.BaseHTTPRequestHandler):
             self.errorhappened = True
             self.dieWithError()
         finally:
+            if AceConfig.videodestroydelay and not self.errorhappened and AceStuff.clientcounter.count(cid) == 1:
+                # If no error happened and we are the only client
+                logger.debug("Sleeping for " + str(AceConfig.videodestroydelay) + " seconds")
+                gevent.sleep(AceConfig.videodestroydelay)
+                
             try:
                 remaining = AceStuff.clientcounter.delete(cid, self.client)
                 self.client.destroy()
