@@ -355,10 +355,6 @@ class HTTPHandler(BaseHTTPServer.BaseHTTPRequestHandler):
                 # Run proxyReadWrite
                 self.proxyReadWrite()
             else:
-                if not self.headerssent:
-                    self.send_response(200)
-                    self.send_header("Content-Type", "video/mpeg")
-                    self.end_headers()
                 self.client.handle(shouldStart, self.url)
                 
 
@@ -474,6 +470,7 @@ class Client:
             
         if self.handler.connected:
             self.handler.send_response(200)
+            self.handler.send_header("Content-Type", "video/mpeg")
             self.handler.end_headers()
             
         while self.handler.connected and self.ace._streamReaderState == 2:
