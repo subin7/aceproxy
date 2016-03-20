@@ -111,6 +111,14 @@ class ClientCounter(object):
                 for c in clients:
                     c.destroy()
 
+    def destroyIdle(self):
+        with self.lock:
+            try:
+                if self.idleace:
+                    self.idleace.destroy()
+            finally:
+                self.idleace = None
+
     def createAce(self):
         logger = logging.getLogger('createAce')
         ace = aceclient.AceClient(

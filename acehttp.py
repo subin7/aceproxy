@@ -426,9 +426,14 @@ class HTTPHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 
 
 class HTTPServer(SocketServer.ThreadingMixIn, BaseHTTPServer.HTTPServer):
+    
+    def process_request(self, request, client_address):
+        checkVlc()
+        checkAce()
+        SocketServer.ThreadingMixIn.process_request(self, request, client_address)
 
     def handle_error(self, request, client_address):
-        # Do not print HTTP tracebacks
+        # logging.debug(traceback.format_exc())
         pass
 
 
@@ -437,8 +442,8 @@ class Client:
     def __init__(self, cid, handler, channelName, channelIcon):
         self.cid = cid
         self.handler = handler
-        self.channelName=channelName
-        self.channelIcon=channelIcon
+        self.channelName = channelName
+        self.channelIcon = channelIcon
         self.ace = None
         self.lock = threading.Condition(threading.Lock())
         self.queue = deque()
@@ -472,18 +477,19 @@ class Client:
             self.handler.end_headers()
             
         while self.handler.connected and self.ace._streamReaderState == 2:
-            data = self.getChunk(60.0)
-            
-            if data and self.handler.connected:
-                try:
-                    self.handler.wfile.write(data)
-                except:
+            try:
+                data = self.getChunk(60.0)
+                
+                if data and self.handler.connected:
+                    try:
+                        self.handler.wfile.write(data)
+                    except:
+                        break
+                else:
                     break
-            elif self.handler.connected:
+            except Queue.Empty:
                 logger.debug("No data received in 60 seconds - disconnecting")
-                break
-            else:
-                break
+                
 
     def addChunk(self, chunk, timeout):
         start = time.time()
@@ -527,8 +533,6 @@ class AceStuff(object):
     '''
     Inter-class interaction class
     '''
-    cidcache = dict()
-
 # taken from http://stackoverflow.com/questions/2699907/dropping-root-permissions-in-python
 def drop_privileges(uid_name, gid_name='nogroup'):
 
@@ -639,6 +643,16 @@ def connectVLC():
         print repr(e)
         return False
 
+def checkVlc():
+    if AceConfig.vlcuse and AceConfig.vlcspawn and not isRunning(AceStuff.vlc):
+        del AceStuff.vlc
+        if spawnVLC(AceStuff.vlcProc, AceConfig.vlcspawntimeout) and connectVLC():
+            logger.info("VLC died, respawned it with pid " + str(AceStuff.vlc.pid))
+        else:
+            logger.error("Cannot spawn VLC!")
+            clean_proc()
+            sys.exit(1)
+
 def spawnAce(cmd, delay=0):
     if AceConfig.osplatform == 'Windows':
         reg = _winreg.ConnectRegistry(None, _winreg.HKEY_CURRENT_USER)
@@ -657,6 +671,22 @@ def spawnAce(cmd, delay=0):
     except:
         return False
 
+def checkAce():
+    if AceConfig.acespawn and not hasattr(AceStuff, 'ace') or not isRunning(AceStuff.ace):
+        AceStuff.clientcounter.destroyIdle()
+        if hasattr(AceStuff, 'ace'):
+            del AceStuff.ace
+        if spawnAce(AceStuff.aceProc, 1):
+            logger.info("Ace Stream died, respawned it with pid " + str(AceStuff.ace.pid))
+            if AceConfig.osplatform == 'Windows':
+                # Wait some time because ace engine refreshes the acestream.port file only after full loading...
+                gevent.sleep(AceConfig.acestartuptimeout)
+                detectPort()
+        else:
+            logger.error("Cannot spawn Ace Stream!")
+            clean_proc()
+            sys.exit(1)
+            
 def detectPort():
     try:
         if not isRunning(AceStuff.ace):
@@ -809,7 +839,7 @@ if AceConfig.osplatform == 'Windows':
     # Wait some time because ace engine refreshes the acestream.port file only after full loading...
     gevent.sleep(AceConfig.acestartuptimeout)
     detectPort()
-
+    
 try:
     logger.info("Using gevent %s" % gevent.__version__)
     logger.info("Using psutil %s" % psutil.__version__)
@@ -817,28 +847,6 @@ try:
          logger.info("Using VLC %s" % AceStuff.vlcclient._vlcver)
     logger.info("Server started.")
     while True:
-        if AceConfig.vlcuse and AceConfig.vlcspawn:
-            if not isRunning(AceStuff.vlc):
-                del AceStuff.vlc
-                if spawnVLC(AceStuff.vlcProc, AceConfig.vlcspawntimeout) and connectVLC():
-                    logger.info("VLC died, respawned it with pid " + str(AceStuff.vlc.pid))
-                else:
-                    logger.error("Cannot spawn VLC!")
-                    clean_proc()
-                    sys.exit(1)
-        if AceConfig.acespawn and not isRunning(AceStuff.ace):
-            del AceStuff.ace
-            if spawnAce(AceStuff.aceProc, 1):
-                logger.info("Ace Stream died, respawned it with pid " + str(AceStuff.ace.pid))
-                if AceConfig.osplatform == 'Windows':
-                    # Wait some time because ace engine refreshes the acestream.port file only after full loading...
-                    gevent.sleep(AceConfig.acestartuptimeout)
-                    detectPort()
-            else:
-                logger.error("Cannot spawn Ace Stream!")
-                clean_proc()
-                sys.exit(1)
-        # Return to our server tasks
         server.handle_request()
 except (KeyboardInterrupt, SystemExit):
     shutdown()
