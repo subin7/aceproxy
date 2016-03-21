@@ -109,6 +109,10 @@ class Torrenttv(AceProxyPlugin):
             url = urlparse.urlparse(connection.path)
             
             if url.path.startswith('/torrenttv/channel/'):
+                if not url.path.endswith('.mp4'):
+                    connection.dieWithError()
+                    return
+                
                 name = urllib2.unquote(url.path[19:-4]).decode('UTF8')
                 url = self.channels[name]
                 connection.path = '/torrent/' + urllib2.quote(url, '') + '/stream.mp4'

@@ -356,11 +356,7 @@ class HTTPHandler(BaseHTTPServer.BaseHTTPRequestHandler):
                 self.proxyReadWrite()
             else:
                 self.client.handle(shouldStart, self.url)
-                
 
-            # Waiting until hangDetector is joined
-            self.hanggreenlet.join()
-            logger.debug("Request handler finished")
         except (aceclient.AceException, vlcclient.VlcException, urllib2.URLError) as e:
             logger.error("Exception: " + repr(e))
             self.errorhappened = True

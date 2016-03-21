@@ -221,7 +221,7 @@ class P2pproxy(AceProxyPlugin):
                 else:
                     try:
                         param_date = param_date.split('-')
-                        d = date(param_date[2], param_date[1], param_date[0])
+                        d = date(int(param_date[2]), int(param_date[1]), int(param_date[0]))
                     except IndexError:
                         P2pproxy.logger.error('date param is not correct!')
                         connection.dieWithError()
@@ -296,7 +296,7 @@ class P2pproxy(AceProxyPlugin):
                 else:
                     try:
                         param_date = param_date.split('-')
-                        d = date(param_date[2], param_date[1], param_date[0])
+                        d = date(int(param_date[2]), int(param_date[1]), int(param_date[0]))
                     except IndexError:
                         P2pproxy.logger.error('date param is not correct!')
                         connection.dieWithError()
