@@ -41,7 +41,7 @@ class PlaylistGenerator(object):
         
         return config.m3uchanneltemplate % item
 
-    def exportm3u(self, hostport, path='', add_ts=False, empty_header=False, archive=False, header=None):
+    def exportm3u(self, hostport, path='', add_ts=False, empty_header=False, archive=False, header=None, fmt=None):
         '''
         Exports m3u playlist
         '''
@@ -80,6 +80,12 @@ class PlaylistGenerator(object):
             if url == item['url']: # For channel names
                 item['url'] = re.sub('^([^/]+)$', lambda match: 'http://' + hostport + path + '/' + match.group(0),
                                         url, flags=re.MULTILINE)
+            
+            if fmt:
+                if '?' in item['url']:
+                    item['url'] = item['url'] + '&fmt=' + fmt
+                else:
+                    item['url'] = item['url'] + '/?fmt=' + fmt
 
             itemlist += PlaylistGenerator._generatem3uline(item)
 

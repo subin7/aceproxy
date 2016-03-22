@@ -125,6 +125,26 @@ class AceConfig(acedefconfig.AceDefConfig):
     # !!!
     # PLEASE set this to 0 if you use VLC
     # !!!
+    #
+    # ----------------------------------------------------
+    # Transcoding configuration
+    # ----------------------------------------------------
+    # Enable/disable transcoding
+    transcode = False
+    # Dictionary with a set of transcoding commands. Transcoding command is an 
+    # executable commandline expression that reads an input stream from STDIN 
+    # and writes a transcoded stream to STDOUT. The commands are selected 
+    # according to the value of the 'fmt' request parameter. For example, the 
+    # following url:
+    # http://loclahost:8000/channels/?type=m3u&fmt=mp2
+    # contains the fmt=mp2. It means that the 'mp2' command will  be used for 
+    # transcoding. You may add any number of commands to this dictionary.
+    transcodecmd = dict()
+    # transcodecmd['mp2'] = 'ffmpeg -i - -c:a mp2 -c:v mpeg2video -f mpegts -qscale:v 2 -'.split()
+    # transcodecmd['mkv'] = 'ffmpeg -i - -c:a copy -c:v copy -f matroska -'.split()
+    # transcodecmd['default'] = 'ffmpeg -i - -c:a copy -c:v copy -f mpegts -'.split()
+    
+    # ----------------------------------------------------
     videodelay = 0
     # Obey PAUSE and RESUME commands from Engine
     # (stops sending data to client, should prevent annoying buffering)

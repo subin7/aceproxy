@@ -5,6 +5,7 @@ http://ip:port/allfon
 import re
 import logging
 import urllib2
+import urlparse
 import time
 from modules.PluginInterface import AceProxyPlugin
 from modules.PlaylistGenerator import PlaylistGenerator
@@ -70,4 +71,7 @@ class Allfon(AceProxyPlugin):
         for match in matches:
             playlistgen.addItem(match.groupdict())
 
-        connection.wfile.write(playlistgen.exportm3u(hostport, add_ts=add_ts))
+        url = urlparse.urlparse(connection.path)
+        params = urlparse.parse_qs(url.query)
+        fmt = params['fmt'][0] if params.has_key('fmt') else None
+        connection.wfile.write(playlistgen.exportm3u(hostport, add_ts=add_ts, fmt=fmt))

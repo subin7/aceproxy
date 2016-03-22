@@ -18,6 +18,7 @@ import signal
 import sys
 import logging
 import psutil
+from subprocess import PIPE
 import BaseHTTPServer
 import SocketServer
 from socket import error as SocketException
@@ -28,6 +29,7 @@ import json
 import time
 import threading
 import urllib2
+import urlparse
 import Queue
 import aceclient
 import aceconfig
@@ -213,8 +215,11 @@ class HTTPHandler(BaseHTTPServer.BaseHTTPRequestHandler):
                 return
         self.handleRequest(headers_only)
 
-    def handleRequest(self, headers_only, channelName=None, channelIcon=None):
+    def handleRequest(self, headers_only, channelName=None, channelIcon=None, fmt=None):
         logger = logging.getLogger('handleRequest')
+        self.requrl = urlparse.urlparse(self.path)
+        self.reqparams = urlparse.parse_qs(self.requrl.query)
+        self.path = self.requrl.path[:-1] if self.requrl.path.endswith('/') else self.requrl.path
         
         # Check if third parameter exists
         # …/pid/blablablablabla/video.mpg
@@ -355,7 +360,9 @@ class HTTPHandler(BaseHTTPServer.BaseHTTPRequestHandler):
                 # Run proxyReadWrite
                 self.proxyReadWrite()
             else:
-                self.client.handle(shouldStart, self.url)
+                if not fmt:
+                    fmt = self.reqparams.get('fmt')[0] if self.reqparams.has_key('fmt') else None
+                self.client.handle(shouldStart, self.url, fmt)
 
         except (aceclient.AceException, vlcclient.VlcException, urllib2.URLError) as e:
             logger.error("Exception: " + repr(e))
@@ -440,7 +447,7 @@ class Client:
         self.lock = threading.Condition(threading.Lock())
         self.queue = deque()
     
-    def handle(self, shouldStart, url):
+    def handle(self, shouldStart, url, fmt=None):
         logger = logging.getLogger("ClientHandler")
         
         if shouldStart:
@@ -468,21 +475,39 @@ class Client:
             self.handler.send_response(200)
             self.handler.send_header("Content-Type", "video/mpeg")
             self.handler.end_headers()
-            
-        while self.handler.connected and self.ace._streamReaderState == 2:
-            try:
-                data = self.getChunk(60.0)
-                
-                if data and self.handler.connected:
-                    try:
-                        self.handler.wfile.write(data)
-                    except:
+        
+        if AceConfig.transcode:
+            if not fmt or not AceConfig.transcodecmd.has_key(fmt):
+                fmt = 'default'
+            if AceConfig.transcodecmd.has_key(fmt):
+                stderr = None if AceConfig.loglevel == logging.DEBUG else DEVNULL
+                transcoder = psutil.Popen(AceConfig.transcodecmd[fmt], bufsize=AceConfig.readchunksize,
+                                      stdin=PIPE, stdout=self.handler.wfile, stderr=stderr)
+                out = transcoder.stdin
+            else:
+                transcoder = None
+                out = self.handler.wfile
+        else:
+            transcoder = None
+            out = self.handler.wfile
+        
+        try:
+            while self.handler.connected and self.ace._streamReaderState == 2:
+                try:
+                    data = self.getChunk(60.0)
+                    
+                    if data and self.handler.connected:
+                        try:
+                            out.write(data)
+                        except:
+                            break
+                    else:
                         break
-                else:
-                    break
-            except Queue.Empty:
-                logger.debug("No data received in 60 seconds - disconnecting")
-                
+                except Queue.Empty:
+                    logger.debug("No data received in 60 seconds - disconnecting")
+        finally:
+            if transcoder:
+                transcoder.kill()
 
     def addChunk(self, chunk, timeout):
         start = time.time()
@@ -602,7 +627,7 @@ if AceConfig.osplatform != 'Windows' and AceConfig.aceproxyuser and os.getuid() 
 # Creating ClientCounter
 AceStuff.clientcounter = ClientCounter()
 
-if AceConfig.vlcspawn or AceConfig.acespawn:
+if AceConfig.vlcspawn or AceConfig.acespawn or AceConfig.transcode:
     DEVNULL = open(os.devnull, 'wb')
 
 # Spawning procedures
@@ -665,7 +690,7 @@ def spawnAce(cmd, delay=0):
         return False
 
 def checkAce():
-    if AceConfig.acespawn and not hasattr(AceStuff, 'ace') or not isRunning(AceStuff.ace):
+    if AceConfig.acespawn and not isRunning(AceStuff.ace):
         AceStuff.clientcounter.destroyIdle()
         if hasattr(AceStuff, 'ace'):
             del AceStuff.ace
@@ -813,6 +838,7 @@ if AceConfig.osplatform == 'Windows':
 else:
     name = 'acestreamengine'
 ace_pid = findProcess(name)
+AceStuff.ace = None
 if not ace_pid:
     if AceConfig.acespawn:
         if AceConfig.osplatform == 'Windows':

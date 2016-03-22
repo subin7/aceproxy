@@ -87,7 +87,7 @@ class Torrenttelik(AceProxyPlugin):
             channel['group'] = channel.get('cat', '')
             playlistgen.addItem(channel)
 
-        exported = playlistgen.exportm3u(hostport, add_ts=add_ts)
+        exported = playlistgen.exportm3u(hostport, add_ts=add_ts, fmt=self.getparam('fmt'))
         exported = exported.encode('utf-8')
         connection.wfile.write(exported)
 

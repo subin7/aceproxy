@@ -89,7 +89,7 @@ class P2pproxy(AceProxyPlugin):
                 connection.path = stream_url
                 connection.splittedpath = stream_url.split('/')
                 connection.reqtype = connection.splittedpath[1].lower()
-                connection.handleRequest(headers_only)
+                connection.handleRequest(headers_only, fmt=self.get_param('fmt'))
             elif self.get_param('type') == 'm3u':  # /channels/?filter=[filter]&group=[group]&type=m3u
                 if headers_only:
                     connection.send_response(200)
@@ -125,7 +125,7 @@ class P2pproxy(AceProxyPlugin):
 
                 P2pproxy.logger.debug('Exporting')
                 header = '#EXTM3U url-tvg="%s" tvg-shift=%d\n' %(config.tvgurl, config.tvgshift)
-                exported = playlistgen.exportm3u(hostport=hostport, header=header)
+                exported = playlistgen.exportm3u(hostport=hostport, header=header, fmt=self.get_param('fmt'))
                 exported = exported.encode('utf-8')
                 connection.send_response(200)
                 connection.send_header('Content-Type', 'application/x-mpegurl')
@@ -213,7 +213,7 @@ class P2pproxy(AceProxyPlugin):
                 connection.path = stream_url
                 connection.splittedpath = stream_url.split('/')
                 connection.reqtype = connection.splittedpath[1].lower()
-                connection.handleRequest(headers_only)
+                connection.handleRequest(headers_only, fmt=self.get_param('fmt'))
             elif self.get_param('type') == 'm3u':  # /archive/?type=m3u&date=[param_date]&channel_id=[param_channel]
                 param_date = self.get_param('date')
                 if not param_date:
@@ -281,7 +281,7 @@ class P2pproxy(AceProxyPlugin):
                         playlistgen.addItem({'name': name, 'url': record_id, 'logo': logo})
 
                 P2pproxy.logger.debug('Exporting')
-                exported = playlistgen.exportm3u(hostport, empty_header=True, archive=True)
+                exported = playlistgen.exportm3u(hostport, empty_header=True, archive=True, fmt=self.get_param('fmt'))
                 exported = exported.encode('utf-8')
                 
                 connection.send_response(200)

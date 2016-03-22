@@ -66,7 +66,7 @@ class Torrenttv(AceProxyPlugin):
                 
                 if url.startswith('http://') and url.endswith('.acelive'):
                     self.channels[name] = url
-                    itemdict['url'] = urllib2.quote(encname, '') +'.mp4'
+                    itemdict['url'] = urllib2.quote(encname, '') + '.mp4'
                     
                 m.update(encname)
             
@@ -107,6 +107,8 @@ class Torrenttv(AceProxyPlugin):
                     return
             
             url = urlparse.urlparse(connection.path)
+            params = urlparse.parse_qs(url.query)
+            fmt = params['fmt'][0] if params.has_key('fmt') else None
             
             if url.path.startswith('/torrenttv/channel/'):
                 if not url.path.endswith('.mp4'):
@@ -129,8 +131,8 @@ class Torrenttv(AceProxyPlugin):
                 hostport = connection.headers['Host']
                 path = '' if len(self.channels) == 0 else '/torrenttv/channel' 
                 add_ts = True if url.path.endswith('/ts')  else False
-                header = '#EXTM3U url-tvg="%s" tvg-shift=%d\n' %(config.tvgurl, config.tvgshift)
-                exported = self.playlist.exportm3u(hostport, path, add_ts=add_ts, header=header)
+                header = '#EXTM3U url-tvg="%s" tvg-shift=%d\n' % (config.tvgurl, config.tvgshift)
+                exported = self.playlist.exportm3u(hostport, path, add_ts=add_ts, header=header, fmt=fmt)
                 
                 connection.send_response(200)
                 connection.send_header('Content-Type', 'application/x-mpegurl')
