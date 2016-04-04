@@ -34,7 +34,7 @@ import config.p2pproxy as config
 class P2pproxy(AceProxyPlugin):
     TTV = 'http://torrent-tv.ru/'
     TTVU = TTV + 'uploads/'
-    handlers = ('channels', 'archive', 'xbmc.pvr', 'logos')
+    handlers = ('channels', 'channels.m3u', 'archive', 'xbmc.pvr', 'logos')
     logger = logging.getLogger('plugin_p2pproxy')
 
     def __init__(self, AceConfig, AceStuff):
@@ -50,7 +50,7 @@ class P2pproxy(AceProxyPlugin):
         query = urlparse.urlparse(connection.path).query
         self.params = urlparse.parse_qs(query)
 
-        if connection.reqtype == 'channels':  # /channels/ branch
+        if connection.reqtype == 'channels' or connection.reqtype == 'channels.m3u':  # /channels/ branch
             if len(connection.splittedpath) == 3 and connection.splittedpath[2].split('?')[
                 0] == 'play':  # /channels/play?id=[id]
                 channel_id = self.get_param('id')
@@ -92,7 +92,7 @@ class P2pproxy(AceProxyPlugin):
                 connection.splittedpath = stream_url.split('/')
                 connection.reqtype = connection.splittedpath[1].lower()
                 connection.handleRequest(headers_only, fmt=self.get_param('fmt'))
-            elif self.get_param('type') == 'm3u':  # /channels/?filter=[filter]&group=[group]&type=m3u
+            elif connection.reqtype == 'channels.m3u' or self.get_param('type') == 'm3u':  # /channels/?filter=[filter]&group=[group]&type=m3u
                 if headers_only:
                     connection.send_response(200)
                     connection.send_header('Content-Type', 'application/x-mpegurl')
