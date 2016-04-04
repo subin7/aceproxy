@@ -160,14 +160,15 @@ class P2pproxy(AceProxyPlugin):
                 connection.send_response(200)
                 connection.send_header('Access-Control-Allow-Origin', '*')
                 connection.send_header('Connection', 'close')
-                connection.send_header('Content-Length', str(len(translations_list)))
                 connection.send_header('Content-Type', 'text/xml;charset=utf-8')
-                connection.end_headers()
                 
-                if not headers_only:
+                if headers_only:
+                    connection.end_headers()
                     return
                 
                 translations_list = self.api.translations('all', True)
+                connection.send_header('Content-Length', str(len(translations_list)))
+                connection.end_headers()
                 P2pproxy.logger.debug('Exporting')
                 connection.wfile.write(translations_list)
         elif connection.reqtype == 'archive':  # /archive/ branch
@@ -185,6 +186,8 @@ class P2pproxy(AceProxyPlugin):
                     connection.send_header('Content-Length', str(len(archive_channels)))
                     connection.end_headers()
                     connection.wfile.write(archive_channels)
+                
+                return
             if len(connection.splittedpath) == 3 and connection.splittedpath[2].split('?')[
                 0] == 'play':  # /archive/play?id=[record_id]
                 record_id = self.get_param('id')
@@ -265,11 +268,11 @@ class P2pproxy(AceProxyPlugin):
                     for record in records_list:
                         record_id = record.getAttribute('record_id')
                         name = record.getAttribute('name')
-                        channel_id = record.getAttribute('channel_id')
+                        channel_id = record.getAttribute('epg_id')
                         channel_name = ''
                         logo = ''
                         for channel in channels_list:
-                            if channel.getAttribute('channel_id') == channel_id:
+                            if channel.getAttribute('epg_id') == channel_id:
                                 channel_name = channel.getAttribute('name')
                                 logo = channel.getAttribute('logo')
     
@@ -278,7 +281,7 @@ class P2pproxy(AceProxyPlugin):
                         if logo != '' and config.fullpathlogo:
                             logo = P2pproxy.TTVU + logo
     
-                        playlistgen.addItem({'name': name, 'url': record_id, 'logo': logo})
+                        playlistgen.addItem({'name': name, 'url': record_id, 'logo': logo, 'tvg': ''})
 
                 P2pproxy.logger.debug('Exporting')
                 exported = playlistgen.exportm3u(hostport, empty_header=True, archive=True, fmt=self.get_param('fmt'))
