@@ -41,7 +41,7 @@ class PlaylistGenerator(object):
         
         return config.m3uchanneltemplate % item
 
-    def exportm3u(self, hostport, path='', add_ts=False, empty_header=False, archive=False, header=None, fmt=None):
+    def exportm3u(self, hostport, path='', add_ts=False, empty_header=False, archive=False, process_url=True, header=None, fmt=None):
         '''
         Exports m3u playlist
         '''
@@ -64,22 +64,23 @@ class PlaylistGenerator(object):
             item['tvg'] = item.get('tvg', '') if item.has_key('tvg') else item.get('name').replace(' ', '_')
             url = item['url'];
 
-            # For .acelive and .torrent
-            item['url'] = re.sub('^(http.+)$', lambda match: 'http://' + hostport + path + '/torrent/' + \
-                             urllib2.quote(match.group(0), '') + '/stream.mp4', url,
-                                   flags=re.MULTILINE)
-            if url == item['url']: # For PIDs
-                item['url'] = re.sub('^(acestream://)?(?P<pid>[0-9a-f]{40})$', 'http://' + hostport + path + '/pid/\\g<pid>/stream.mp4',
-                                    url, flags=re.MULTILINE)
-            if archive and url == item['url']: # For archive channel id's
-                item['url'] = re.sub('^([0-9]+)$', lambda match: 'http://' + hostport + path + '/archive/play?id=' + match.group(0),
-                                    url, flags=re.MULTILINE)
-            if not archive and url == item['url']: # For channel id's
-                item['url'] = re.sub('^([0-9]+)$', lambda match: 'http://' + hostport + path + '/channels/play?id=' + match.group(0),
+            if process_url:
+                # For .acelive and .torrent
+                item['url'] = re.sub('^(http.+)$', lambda match: 'http://' + hostport + path + '/torrent/' + \
+                                 urllib2.quote(match.group(0), '') + '/stream.mp4', url,
+                                       flags=re.MULTILINE)
+                if url == item['url']: # For PIDs
+                    item['url'] = re.sub('^(acestream://)?(?P<pid>[0-9a-f]{40})$', 'http://' + hostport + path + '/pid/\\g<pid>/stream.mp4',
                                         url, flags=re.MULTILINE)
-            if url == item['url']: # For channel names
-                item['url'] = re.sub('^([^/]+)$', lambda match: 'http://' + hostport + path + '/' + match.group(0),
+                if archive and url == item['url']: # For archive channel id's
+                    item['url'] = re.sub('^([0-9]+)$', lambda match: 'http://' + hostport + path + '/archive/play?id=' + match.group(0),
                                         url, flags=re.MULTILINE)
+                if not archive and url == item['url']: # For channel id's
+                    item['url'] = re.sub('^([0-9]+)$', lambda match: 'http://' + hostport + path + '/channels/play?id=' + match.group(0),
+                                            url, flags=re.MULTILINE)
+                if url == item['url']: # For channel names
+                    item['url'] = re.sub('^([^/]+)$', lambda match: 'http://' + hostport + path + '/' + match.group(0),
+                                            url, flags=re.MULTILINE)
             
             if fmt:
                 if '?' in item['url']:
