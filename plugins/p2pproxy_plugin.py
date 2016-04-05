@@ -197,6 +197,7 @@ class P2pproxy(AceProxyPlugin):
                 channels_list = self.api.archive_channels()
                 hostport = connection.headers['Host']
                 playlistgen = PlaylistGenerator()
+                suffix = '&suffix=' + self.get_param('suffix') if self.params.has_key('suffix') else ''
                     
                 for channel in channels_list:
                         epg_id = channel.getAttribute('epg_id')
@@ -206,7 +207,7 @@ class P2pproxy(AceProxyPlugin):
                             logo = P2pproxy.TTVU + logo
                         for d in dates:
                             n = name + ' (' + d + ')'
-                            url = 'http://%s/archive/?type=m3u&date=%s&channel_id=%s' % (hostport, d, epg_id)
+                            url = 'http://%s/archive/?type=m3u&date=%s&channel_id=%s%s' % (hostport, d, epg_id, suffix)
                             playlistgen.addItem({'group': name, 'tvg': '', 'name': n, 'url': url, 'logo': logo})
 
                 exported = playlistgen.exportm3u(hostport, empty_header=True, process_url=False, fmt=self.get_param('fmt')).encode('utf-8')
