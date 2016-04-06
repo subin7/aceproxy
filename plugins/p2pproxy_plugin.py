@@ -174,7 +174,26 @@ class P2pproxy(AceProxyPlugin):
                 P2pproxy.logger.debug('Exporting')
                 connection.wfile.write(translations_list)
         elif connection.reqtype == 'archive':  # /archive/ branch
-            if len(connection.splittedpath) >= 3 and (connection.splittedpath[2] == 'playlist' or connection.splittedpath[2] == 'playlist.m3u'):  # /archive/playlist.m3u
+            if len(connection.splittedpath) >= 3 and (connection.splittedpath[2] == 'dates' or connection.splittedpath[2] == 'dates.m3u'):  # /archive/dates.m3u
+                d = date.today()
+                delta = timedelta(days=1)
+                playlistgen = PlaylistGenerator()
+                hostport = connection.headers['Host']
+                days = int(self.get_param('days')) if self.params.has_key('days') else 7
+                suffix = '&suffix=' + self.get_param('suffix') if self.params.has_key('suffix') else ''
+                for i in range(days):
+                    dfmt = d.strftime('%d-%m-%Y')
+                    url = 'http://%s/archive/playlist/?date=%s%s' % (hostport, dfmt, suffix) 
+                    playlistgen.addItem({'group': '', 'tvg': '', 'name': dfmt, 'url': url})
+                    d = d - delta
+                exported = playlistgen.exportm3u(hostport, empty_header=True, process_url=False, fmt=self.get_param('fmt')).encode('utf-8')
+                connection.send_response(200)
+                connection.send_header('Content-Type', 'application/x-mpegurl')
+                connection.send_header('Content-Length', str(len(exported)))
+                connection.end_headers()
+                connection.wfile.write(exported)
+                return
+            elif len(connection.splittedpath) >= 3 and (connection.splittedpath[2] == 'playlist' or connection.splittedpath[2] == 'playlist.m3u'):  # /archive/playlist.m3u
                 dates = list()
                 
                 if self.params.has_key('date'):
@@ -183,7 +202,8 @@ class P2pproxy(AceProxyPlugin):
                 else:
                     d = date.today()
                     delta = timedelta(days=1)
-                    for i in range(7):
+                    days = int(self.get_param('days')) if self.params.has_key('days') else 7
+                    for i in range(days):
                         dates.append(d.strftime('%d-%m-%Y').replace('-0', '-'))
                         d = d - delta
                 
@@ -206,7 +226,7 @@ class P2pproxy(AceProxyPlugin):
                         if logo != '' and config.fullpathlogo:
                             logo = P2pproxy.TTVU + logo
                         for d in dates:
-                            n = name + ' (' + d + ')'
+                            n = name + ' (' + d + ')' if len(dates) > 1 else name
                             url = 'http://%s/archive/?type=m3u&date=%s&channel_id=%s%s' % (hostport, d, epg_id, suffix)
                             playlistgen.addItem({'group': name, 'tvg': '', 'name': n, 'url': url, 'logo': logo})
 
