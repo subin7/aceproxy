@@ -7,13 +7,17 @@ from modules.PluginInterface import AceProxyPlugin
 
 
 class Stat(AceProxyPlugin):
-    handlers = ('stat',)
+    handlers = ('stat', 'favicon.ico')
 
     def __init__(self, AceConfig, AceStuff):
         self.config = AceConfig
         self.stuff = AceStuff
 
     def handle(self, connection, headers_only=False):
+        if connection.reqtype == 'favicon.ico':
+            connection.send_response(404)
+            return
+        
         connection.send_response(200)
         connection.send_header('Content-type', 'text/html; charset=utf-8')
         connection.end_headers()
