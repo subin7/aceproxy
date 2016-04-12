@@ -648,7 +648,9 @@ def spawnVLC(cmd, delay=0):
             dir = _winreg.QueryValueEx(key, 'InstallDir')
             playerdir = os.path.dirname(dir[0] + '\\player\\')
             cmd[0] = playerdir + '\\' + cmd[0]
-        AceStuff.vlc = psutil.Popen(cmd, stdout=DEVNULL, stderr=DEVNULL)
+        stdout = None if AceConfig.loglevel == logging.DEBUG else DEVNULL
+        stderr = None if AceConfig.loglevel == logging.DEBUG else DEVNULL
+        AceStuff.vlc = psutil.Popen(cmd, stdout=stdout, stderr=stderr)
         gevent.sleep(delay)
         return True
     except:
