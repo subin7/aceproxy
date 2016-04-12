@@ -87,10 +87,12 @@ class Torrenttelik(AceProxyPlugin):
             channel['group'] = channel.get('cat', '')
             playlistgen.addItem(channel)
 
-        exported = playlistgen.exportm3u(hostport, add_ts=add_ts, fmt=self.getparam('fmt'))
-        exported = exported.encode('utf-8')
+        Torrenttelik.logger.debug('Exporting')
+        header = '#EXTM3U url-tvg="%s" tvg-shift=%d\n' %(config.tvgurl, config.tvgshift)
+        exported = playlistgen.exportm3u(hostport, header=header, add_ts=add_ts, fmt=self.getparam('fmt'))
+        exported = exported.encode('utf-8') 
         connection.wfile.write(exported)
-
+ 
     def getparam(self, key):
         if key in self.params:
             return self.params[key][0]

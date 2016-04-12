@@ -74,4 +74,6 @@ class Allfon(AceProxyPlugin):
         url = urlparse.urlparse(connection.path)
         params = urlparse.parse_qs(url.query)
         fmt = params['fmt'][0] if params.has_key('fmt') else None
-        connection.wfile.write(playlistgen.exportm3u(hostport, add_ts=add_ts, fmt=fmt))
+        header = '#EXTM3U url-tvg="%s" tvg-shift=%d\n' %(config.tvgurl, config.tvgshift)
+        connection.wfile.write(playlistgen.exportm3u(hostport, header=header, add_ts=add_ts, fmt=fmt))
+ 
