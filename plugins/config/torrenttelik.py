@@ -7,3 +7,7 @@ Torrent-telik.com Playlist Downloader Plugin configuration file
 url_ttv = 'http://torrent-telik.com/channels/torrent-tv.json'
 url_mob_ttv = 'http://torrent-telik.com/channels/mob-torrent-tv.json'
 url_allfon = 'http://torrent-telik.com/channels/allfon.json'
+
+# EPG urls & EPG timeshift
+tvgurl = 'http://simple-tv.torrent-telik.com/teleprograma'
+tvgshift = 0
