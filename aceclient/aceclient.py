@@ -218,7 +218,8 @@ class AceClient(object):
             connection = self._streamReaderConnection = urllib2.urlopen(url)
 
             if url.endswith('.m3u8'):
-               logger.debug("Can't stream HLS in non VLC mode: %s" % url)
+                logger.debug("Can't stream HLS in non VLC mode: %s" % url)
+                return
 
             if connection.getcode() != 200:
                 logger.error("Failed to open video stream %s" % connection)
