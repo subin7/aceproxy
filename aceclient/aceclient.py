@@ -69,6 +69,7 @@ class AceClient(object):
         self._streamReaderConnection = None
         self._streamReaderState = None
         self._streamReaderQueue = deque()
+        self._engine_version_code = 0;
 
         # Logger
         logger = logging.getLogger('AceClieimport tracebacknt_init')
@@ -170,8 +171,9 @@ class AceClient(object):
         '''
         Start video method
         '''
+        stream_type = 'output_format=http' if self._engine_version_code >= 3010500 and not AceConfig.vlcuse else ''
         self._urlresult = AsyncResult()
-        self._write(AceMessage.request.START(datatype.upper(), value))
+        self._write(AceMessage.request.START(datatype.upper(), value, stream_type))
         self._getResult()
 
     def STOP(self):
@@ -214,7 +216,10 @@ class AceClient(object):
         
         try:
             connection = self._streamReaderConnection = urllib2.urlopen(url)
-            
+
+            if url.endswith('.m3u8'):
+               logger.debug("Can't stream HLS in non VLC mode: %s" % url)
+
             if connection.getcode() != 200:
                 logger.error("Failed to open video stream %s" % connection)
                 return
@@ -311,6 +316,10 @@ class AceClient(object):
                 # Parsing everything only if the string is not empty
                 if self._recvbuffer.startswith(AceMessage.response.HELLO):
                     # Parse HELLO
+                    if 'version_code=' in self._recvbuffer:
+                        v = self._recvbuffer.find('version_code=')
+                        self._engine_version_code = int(self._recvbuffer[v+13:v+20])
+
                     if 'key=' in self._recvbuffer:
                         self._request_key_begin = self._recvbuffer.find('key=')
                         self._request_key = \

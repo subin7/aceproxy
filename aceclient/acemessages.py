@@ -5,8 +5,7 @@ Minimal Ace Stream client library to use with HTTP Proxy
 import hashlib
 import platform
 import urllib2
-
-
+ 
 class AceConst(object):
     APIVERSION = 3
 
@@ -78,7 +77,7 @@ class AceMessage(object):
         # End LOADASYNC
 
         @staticmethod
-        def START(command, params_dict):
+        def START(command, params_dict, stream_type):
             if command == 'TORRENT':
                 return 'START TORRENT ' + str(params_dict.get('url')) + ' ' + \
                     str(params_dict.get('file_indexes', '0')) + ' ' + \
@@ -96,7 +95,7 @@ class AceMessage(object):
 
             elif command == 'PID':
                 return 'START PID ' + str(params_dict.get('content_id')) + ' ' + \
-                    str(params_dict.get('file_indexes', '0'))
+                    str(params_dict.get('file_indexes', '0')) + ' ' + stream_type
 
             elif command == 'RAW':
                 return 'START RAW ' + str(params_dict.get('data')) + ' ' + \
