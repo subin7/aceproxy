@@ -56,7 +56,7 @@ class Allfon(AceProxyPlugin):
 
         # Match playlist with regexp
 
-        matches = re.finditer(r'\#EXTINF\:0\,ALLFON\.TV (?P<name>\S.+)\n.+\n.+\n(?P<url>^acestream.+$)',
+        matches = re.finditer(r'\#EXTINF\:0\,ALLFON\.ORG (?P<name>\S.+)\n.+\n.+\n(?P<url>^acestream.+$)',
                               Allfon.playlist, re.MULTILINE)
         
         add_ts = False
