@@ -63,8 +63,8 @@ class Torrenttv(AceProxyPlugin):
                 
                 if logo:
                     itemdict['logo'] = logo
-                
-                if url.startswith('http://') and url.endswith('.acelive'):
+
+                if (url.startswith('acestream://')) or (url.startswith('http://') and url.endswith('.acelive')):
                     self.channels[name] = url
                     itemdict['url'] = urllib2.quote(encname, '') + '.mp4'
                     
@@ -117,9 +117,14 @@ class Torrenttv(AceProxyPlugin):
                 
                 name = urllib2.unquote(url.path[19:-4]).decode('UTF8')
                 url = self.channels[name]
-                connection.path = '/torrent/' + urllib2.quote(url, '') + '/stream.mp4'
-                connection.splittedpath = connection.path.split('/')
-                connection.reqtype = 'torrent'
+                if url.startswith('acestream://'):
+                   connection.path = '/pid/' + url[12:] + '/stream.mp4'
+                   connection.splittedpath = connection.path.split('/')
+                   connection.reqtype = 'pid'
+                else:
+                   connection.path = '/torrent/' + urllib2.quote(url, '') + '/stream.mp4'
+                   connection.splittedpath = connection.path.split('/')
+                   connection.reqtype = 'torrent'
                 play = True
             elif self.etag == connection.headers.get('If-None-Match'):
                 self.logger.debug('ETag matches - returning 304')
@@ -129,7 +134,7 @@ class Torrenttv(AceProxyPlugin):
                 return
             else:
                 hostport = connection.headers['Host']
-                path = '' if len(self.channels) == 0 else '/torrenttv/channel' 
+                path = '' if len(self.channels) == 0 else '/torrenttv/channel'
                 add_ts = True if url.path.endswith('/ts')  else False
                 header = '#EXTM3U url-tvg="%s" tvg-shift=%d\n' % (config.tvgurl, config.tvgshift)
                 exported = self.playlist.exportm3u(hostport, path, add_ts=add_ts, header=header, fmt=fmt)
