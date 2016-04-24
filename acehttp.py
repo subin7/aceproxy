@@ -281,10 +281,6 @@ class HTTPHandler(BaseHTTPServer.BaseHTTPRequestHandler):
             self.headerssent = True
 
         try:
-            self.hanggreenlet = gevent.spawn(self.hangDetector)
-            logger.debug("hangDetector spawned")
-            gevent.sleep()
-
             # Initializing AceClient
             if shouldStart:
                 if contentid:
@@ -325,6 +321,10 @@ class HTTPHandler(BaseHTTPServer.BaseHTTPRequestHandler):
                     # Sleep a bit, because sometimes VLC doesn't open port in
                     # time
                     gevent.sleep(0.5)
+            
+            self.hanggreenlet = gevent.spawn(self.hangDetector)
+            logger.debug("hangDetector spawned")
+            gevent.sleep()
 
             # Building new VLC url
             if AceConfig.vlcuse:
