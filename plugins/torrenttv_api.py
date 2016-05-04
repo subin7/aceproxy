@@ -36,14 +36,15 @@ class TorrentTvApi(object):
         11: 'Региональные',
         12: 'Религиозные'
     }
-    
+
     API_URL = 'http://1ttvapi.top/v3/'
-    
+
     def __init__(self, email, password, maxIdle):
         self.email = email
         self.password = password
         self.maxIdle = maxIdle
         self.session = None
+        self.allTranslations = None
         self.lastActive = 0.0
         self.lock = threading.RLock()
         self.log = logging.getLogger("TTV API")
@@ -63,7 +64,7 @@ class TorrentTvApi(object):
                 self.lastActive = time.time()
                 self.log.debug("Reusing previous session: " + self.session)
                 return self.session
-            
+
             self.log.debug("Creating new session")
             self.session = None
             req = TorrentTvApi.API_URL + 'auth.php?typeresult=json&username=' + self.email + '&password=' + self.password + '&application=tsproxy&guid=' + str(random.randint(100000000,199999999))
@@ -83,7 +84,7 @@ class TorrentTvApi(object):
         :param raw: if True returns unprocessed data
         :return: translations list
         """
-        
+
         if raw:
             try:
                 res = self._xmlresult('translation_list.php', '&type=' + translation_type)
@@ -108,7 +109,7 @@ class TorrentTvApi(object):
         :return: records list
         """
         date = date.replace('-0', '-')
-        
+
         if raw:
             try:
                 res = self._xmlresult('arc_records.php', '&epg_id=' + channel_id + '&date=' + date)
@@ -130,7 +131,7 @@ class TorrentTvApi(object):
         :param raw: if True returns unprocessed data
         :return: archive channels list
         """
-        
+
         if raw:
             try:
                 res = self._xmlresult('arc_list.php', '')
@@ -150,13 +151,16 @@ class TorrentTvApi(object):
 
         :param session: valid user session required
         :param channel_id: id of channel in translations list (see translations() method)
-        :return: type of stream and source
+        :return: type of stream and source and translation list
         """
-        
+
         res = self._checkedjsonresult('translation_stream.php', '&channel_id=' + channel_id)
         stream_type = res['type']
         source = res['source']
-        return stream_type.encode('utf-8'), source.encode('utf-8')
+        allTranslations = self.allTranslations
+        if not allTranslations:
+            self.allTranslations = allTranslations = self.translations('all')
+        return stream_type.encode('utf-8'), source.encode('utf-8'), allTranslations
 
     def archive_stream_source(self, record_id):
         """
@@ -166,7 +170,7 @@ class TorrentTvApi(object):
         :param record_id: id of record in records list (see records() method)
         :return: type of stream and source
         """
-        
+
         res = self._checkedjsonresult('arc_stream.php', '&record_id=' + record_id)
         stream_type = res['type']
         source = res['source']
@@ -252,4 +256,5 @@ class TorrentTvApi(object):
     def _resetSession(self):
         with self.lock:
             self.session = None
+            self.allTranslations = None
             self.auth()

@@ -33,10 +33,10 @@ class Stat(AceProxyPlugin):
             for c in self.stuff.clientcounter.clients[i]:
                 connection.wfile.write('<tr><td>')
                 if c.channelIcon:
-                    connection.wfile.write('<img src="' + c.channelIcon + '" width="24" height="16" />&nbsp;')
+                    connection.wfile.write('<img src="' + c.channelIcon + '" width="40" height="16" />&nbsp;')
                 if c.channelName:
                     connection.wfile.write(c.channelName.encode('UTF8'))
                 else:
                     connection.wfile.write(i)
-                connection.wfile.write('</td><td>' + c.handler.clientip + '</td></tr>')
+                connection.wfile.write('</td><td> : ' + c.handler.clientip + '</td></tr>')
         connection.wfile.write('</table></body></html>')

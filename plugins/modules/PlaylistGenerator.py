@@ -9,8 +9,11 @@ import plugins.config.playlist as config
 
 class PlaylistGenerator(object):
 
-    def __init__(self):
+    def __init__(self, m3uemptyheader=config.m3uemptyheader, m3uheader=config.m3uheader, m3uchanneltemplate=config.m3uchanneltemplate):
         self.itemlist = list()
+        self.m3uemptyheader = m3uemptyheader
+        self.m3uheader = m3uheader
+        self.m3uchanneltemplate = m3uchanneltemplate
 
     def addItem(self, itemdict):
         '''
@@ -25,8 +28,7 @@ class PlaylistGenerator(object):
         '''
         self.itemlist.append(itemdict)
 
-    @staticmethod
-    def _generatem3uline(item):
+    def _generatem3uline(self, item):
         '''
         Generates EXTINF line with url
         '''
@@ -39,7 +41,7 @@ class PlaylistGenerator(object):
         if not item.has_key('logo'):
             item['logo'] = ''
         
-        return config.m3uchanneltemplate % item
+        return self.m3uchanneltemplate % item
 
     def exportm3u(self, hostport, path='', add_ts=False, empty_header=False, archive=False, process_url=True, header=None, fmt=None):
         '''
@@ -52,9 +54,9 @@ class PlaylistGenerator(object):
             
         if header is None:
             if not empty_header:
-                itemlist = config.m3uheader
+                itemlist = self.m3uheader
             else:
-                itemlist = config.m3uemptyheader
+                itemlist = self.m3uemptyheader
         else:
             itemlist = header
         
@@ -88,6 +90,6 @@ class PlaylistGenerator(object):
                 else:
                     item['url'] = item['url'] + '/?fmt=' + fmt
 
-            itemlist += PlaylistGenerator._generatem3uline(item)
+            itemlist += self._generatem3uline(item)
 
         return itemlist

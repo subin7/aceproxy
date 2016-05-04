@@ -26,11 +26,9 @@ class Allfon(AceProxyPlugin):
 
     def downloadPlaylist(self):
         try:
-            Allfon.logger.debug('Trying to download playlist')
-            print(config.url)
+            Allfon.logger.debug('Trying to download playlist: ' + config.url)
             req = urllib2.Request(config.url, headers={'User-Agent' : "Magic Browser"})
-            Allfon.playlist = urllib2.urlopen(
-                req, timeout=10).read()
+            Allfon.playlist = urllib2.urlopen(req, timeout=10).read()
             Allfon.playlisttime = int(time.time())
         except:
             Allfon.logger.error("Can't download playlist!")
@@ -50,7 +48,7 @@ class Allfon(AceProxyPlugin):
         connection.send_response(200)
         connection.send_header('Content-Type', 'application/x-mpegurl')
         connection.end_headers()
-        
+
         if headers_only:
             return;
 
@@ -58,16 +56,16 @@ class Allfon(AceProxyPlugin):
 
         matches = re.finditer(r'\#EXTINF\:0\,ALLFON\.ORG (?P<name>\S.+)\n.+\n.+\n(?P<url>^acestream.+$)',
                               Allfon.playlist, re.MULTILINE)
-        
+
         add_ts = False
         try:
             if connection.splittedpath[2].lower() == 'ts':
                 add_ts = True
         except:
             pass
-                
 
-        playlistgen = PlaylistGenerator()
+
+        playlistgen = PlaylistGenerator(m3uchanneltemplate=config.m3uchanneltemplate)
         for match in matches:
             playlistgen.addItem(match.groupdict())
 
@@ -76,4 +74,4 @@ class Allfon(AceProxyPlugin):
         fmt = params['fmt'][0] if params.has_key('fmt') else None
         header = '#EXTM3U url-tvg="%s" tvg-shift=%d\n' %(config.tvgurl, config.tvgshift)
         connection.wfile.write(playlistgen.exportm3u(hostport, header=header, add_ts=add_ts, fmt=fmt))
- 
+
