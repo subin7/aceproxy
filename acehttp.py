@@ -78,9 +78,12 @@ class HTTPHandler(BaseHTTPServer.BaseHTTPRequestHandler):
         '''
         logging.warning("Dying with error")
         if self.connected:
-            self.send_error(errorcode)
-            self.end_headers()
-            self.closeConnection()
+            try:
+                self.send_error(errorcode)
+                self.end_headers()
+                self.closeConnection()
+            except:
+                pass
 
     def proxyReadWrite(self):
         '''
@@ -122,11 +125,13 @@ class HTTPHandler(BaseHTTPServer.BaseHTTPRequestHandler):
                 if data and self.connected:
                     self.wfile.write(data)
                 else:
-                    logger.warning("Video connection closed")
+                    if self.connected: 
+                        logger.warning("Video connection closed")
                     break
         except SocketException:
             # Video connection dropped
-            logger.warning("Video connection dropped")
+            if self.connected: 
+                logger.warning("Video connection dropped")
         finally:
             self.video.close()
             self.client.destroy()
@@ -146,16 +151,12 @@ class HTTPHandler(BaseHTTPServer.BaseHTTPRequestHandler):
         finally:
             logger.debug("Client disconnected")
             client = self.client
-            if client:
-                self.client.destroy()
+            video = self.video
             
-            try:
-                self.requestgreenlet.kill()
-            except:
-                pass
-            finally:
-                gevent.sleep()
-            return
+            if client:
+                client.destroy()
+            if video:
+                video.close()
 
     def do_HEAD(self):
         return self.do_GET(headers_only=True)
@@ -217,6 +218,7 @@ class HTTPHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 
     def handleRequest(self, headers_only, channelName=None, channelIcon=None, fmt=None):
         logger = logging.getLogger('handleRequest')
+        logger.debug("Headers:\n" + str(self.headers))
         self.requrl = urlparse.urlparse(self.path)
         self.reqparams = urlparse.parse_qs(self.requrl.query)
         self.path = self.requrl.path[:-1] if self.requrl.path.endswith('/') else self.requrl.path
@@ -240,13 +242,13 @@ class HTTPHandler(BaseHTTPServer.BaseHTTPRequestHandler):
             self.dieWithError(503)  # 503 Service Unavailable
             return
 
-        # Pretend to work fine with Fake UAs or HEAD request.
-        useragent = self.headers.get('User-Agent')
-        fakeua = useragent and useragent in AceConfig.fakeuas
-        if headers_only or fakeua:
-            if fakeua:
-                logger.debug("Got fake UA: " + self.headers.get('User-Agent'))
+        # Pretend to work fine with Fake or HEAD request.
+        if headers_only or AceConfig.isFakeRequest(self.path, self.reqparams, self.headers):
             # Return 200 and exit
+            if headers_only:
+                logger.debug("Sending headers and closing connection")
+            else:
+                logger.debug("Fake request - closing connection")
             self.send_response(200)
             self.send_header("Content-Type", "video/mpeg")
             self.end_headers()
@@ -262,6 +264,7 @@ class HTTPHandler(BaseHTTPServer.BaseHTTPRequestHandler):
                 self.params.append('0')
         
         self.url = None
+        self.video = None
         self.path_unquoted = urllib2.unquote(self.splittedpath[2])
         contentid = self.getCid(self.reqtype, self.path_unquoted)
         cid = contentid if contentid else self.path_unquoted
@@ -269,16 +272,6 @@ class HTTPHandler(BaseHTTPServer.BaseHTTPRequestHandler):
         self.client = Client(cid, self, channelName, channelIcon)
         self.vlcid = urllib2.quote(cid, '')
         shouldStart = AceStuff.clientcounter.add(cid, self.client) == 1
-
-        # Send fake headers if this User-Agent is in fakeheaderuas tuple
-        if fakeua:
-            logger.debug(
-                "Sending fake headers for " + useragent)
-            self.send_response(200)
-            self.send_header("Content-Type", "video/mpeg")
-            self.end_headers()
-            # Do not send real headers at all
-            self.headerssent = True
 
         try:
             # Initializing AceClient

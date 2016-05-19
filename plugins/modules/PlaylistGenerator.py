@@ -5,15 +5,20 @@ and groups
 '''
 import re
 import urllib2
-import plugins.config.playlist as config
+from plugins.config.playlist import PlaylistConfig as config
 
 class PlaylistGenerator(object):
 
-    def __init__(self, m3uemptyheader=config.m3uemptyheader, m3uheader=config.m3uheader, m3uchanneltemplate=config.m3uchanneltemplate):
+    def __init__(self,
+                 m3uemptyheader=config.m3uemptyheader, 
+                 m3uheader=config.m3uheader, 
+                 m3uchanneltemplate=config.m3uchanneltemplate,
+                 changeItem = config.changeItem):
         self.itemlist = list()
         self.m3uemptyheader = m3uemptyheader
         self.m3uheader = m3uheader
         self.m3uchanneltemplate = m3uchanneltemplate
+        self.changeItem = changeItem
 
     def addItem(self, itemdict):
         '''
@@ -32,15 +37,17 @@ class PlaylistGenerator(object):
         '''
         Generates EXTINF line with url
         '''
+        self.changeItem(item)
+        
         if not item.has_key('tvg'):
-            item['tvg'] = ''
+            item['tvg'] = item.get('name').replace(' ', '_')
         if not item.has_key('tvgid'):
             item['tvgid'] = ''
         if not item.has_key('group'):
             item['group'] = ''
         if not item.has_key('logo'):
             item['logo'] = ''
-        
+            
         return self.m3uchanneltemplate % item
 
     def exportm3u(self, hostport, path='', add_ts=False, empty_header=False, archive=False, process_url=True, header=None, fmt=None):
@@ -63,7 +70,6 @@ class PlaylistGenerator(object):
         for i in self.itemlist:
             item = i.copy()
             item['name'] = item['name'].replace('"', "'").replace(',', '.')
-            item['tvg'] = item.get('tvg', '') if item.has_key('tvg') else item.get('name').replace(' ', '_')
             url = item['url'];
 
             if process_url:

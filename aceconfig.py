@@ -195,3 +195,17 @@ class AceConfig(acedefconfig.AceDefConfig):
     # Full path to a log file
     logfile = None 
     
+    # This method is used to detect fake requests. Some players send such 
+    # requests in order to detect the MIME type and/or check the stream availability.
+    @staticmethod
+    def isFakeRequest(path, params, headers):
+        useragent = headers.get('User-Agent')
+        
+        if not useragent:
+            return False
+        elif useragent in AceConfig.fakeuas:
+            return True
+        elif useragent == 'Lavf/55.33.100' and not headers.has_key('Range'):
+            return True
+        elif useragent == 'GStreamer souphttpsrc (compatible; LG NetCast.TV-2013) libsoup/2.34.2' and headers.get('icy-metadata') != '1':
+            return True

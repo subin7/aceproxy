@@ -118,13 +118,13 @@ class Torrenttv(AceProxyPlugin):
                 name = urllib2.unquote(url.path[19:-4]).decode('UTF8')
                 url = self.channels[name]
                 if url.startswith('acestream://'):
-                   connection.path = '/pid/' + url[12:] + '/stream.mp4'
-                   connection.splittedpath = connection.path.split('/')
-                   connection.reqtype = 'pid'
+                    connection.path = '/pid/' + url[12:] + '/stream.mp4'
+                    connection.splittedpath = connection.path.split('/')
+                    connection.reqtype = 'pid'
                 else:
-                   connection.path = '/torrent/' + urllib2.quote(url, '') + '/stream.mp4'
-                   connection.splittedpath = connection.path.split('/')
-                   connection.reqtype = 'torrent'
+                    connection.path = '/torrent/' + urllib2.quote(url, '') + '/stream.mp4'
+                    connection.splittedpath = connection.path.split('/')
+                    connection.reqtype = 'torrent'
                 play = True
             elif self.etag == connection.headers.get('If-None-Match'):
                 self.logger.debug('ETag matches - returning 304')
