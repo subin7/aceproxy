@@ -72,11 +72,12 @@ class HTTPHandler(BaseHTTPServer.BaseHTTPRequestHandler):
             except:
                 pass
 
-    def dieWithError(self, errorcode=500):
+    def dieWithError(self, errorcode=500, logmsg='Dying with error', loglevel=logging.WARN):
         '''
         Close connection with error
         '''
-        logging.warning("Dying with error")
+        if logmsg:
+            logging.log(loglevel, logmsg)
         if self.connected:
             try:
                 self.send_error(errorcode)

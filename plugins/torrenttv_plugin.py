@@ -112,12 +112,15 @@ class Torrenttv(AceProxyPlugin):
             
             if url.path.startswith('/torrenttv/channel/'):
                 if not url.path.endswith('.mp4'):
-                    connection.dieWithError()
+                    connection.dieWithError(404, 'Invalid path: ' + url.path, logging.DEBUG)
                     return
                 
                 name = urllib2.unquote(url.path[19:-4]).decode('UTF8')
-                url = self.channels[name]
-                if url.startswith('acestream://'):
+                url = self.channels.get(name)
+                if not url:
+                    connection.dieWithError(404, 'Unknown channel: ' + name, logging.DEBUG)
+                    return
+                elif url.startswith('acestream://'):
                     connection.path = '/pid/' + url[12:] + '/stream.mp4'
                     connection.splittedpath = connection.path.split('/')
                     connection.reqtype = 'pid'

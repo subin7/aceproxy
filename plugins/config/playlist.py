@@ -1,4 +1,4 @@
-
+# -*- coding: utf-8 -*- 
 class PlaylistConfig():
     
     # Default playlist format
@@ -10,8 +10,8 @@ class PlaylistConfig():
     
     # Channel names mapping. You may use this to rename channels. 
     # Examples: 
-    # m3uchannelnames[u'Canal+ HD (France)'] = u'Canal+ HD'
-    # m3uchannelnames[u'Sky Sport 1 HD (Italy)'] = u'Sky Sport 1 HD'
+    # m3uchannelnames['Canal+ HD (France)'] = 'Canal+ HD'
+    # m3uchannelnames['Sky Sport 1 HD (Italy)'] = 'Sky Sport 1 HD'
     m3uchannelnames = dict()
     
     # This method can be used to change a channel info such as name, group etc.
