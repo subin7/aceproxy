@@ -25,7 +25,14 @@ class PlaylistConfig():
     #    logo - channel logo  
     @staticmethod
     def changeItem(item):
-        name = PlaylistConfig.m3uchannelnames.get(item['name'])
-        
-        if name:
-            item['name'] = name
+        if len(PlaylistConfig.m3uchannelnames) > 0:
+            name = item['name']
+            
+            if isinstance(name, str):
+                name = PlaylistConfig.m3uchannelnames.get(name)
+                if name:
+                    item['name'] = name
+            elif isinstance(name, unicode):
+                name = PlaylistConfig.m3uchannelnames.get(name.encode('utf8'))
+                if name:
+                    item['name'] = name.decode('utf8')

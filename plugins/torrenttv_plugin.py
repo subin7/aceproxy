@@ -59,7 +59,6 @@ class Torrenttv(AceProxyPlugin):
                 name = encname.decode('UTF-8')
                 logo = config.logomap.get(name)
                 url = itemdict['url']
-                self.playlist.addItem(itemdict)
                 
                 if logo:
                     itemdict['logo'] = logo
@@ -67,7 +66,8 @@ class Torrenttv(AceProxyPlugin):
                 if (url.startswith('acestream://')) or (url.startswith('http://') and url.endswith('.acelive')):
                     self.channels[name] = url
                     itemdict['url'] = urllib2.quote(encname, '') + '.mp4'
-                    
+
+                self.playlist.addItem(itemdict)
                 m.update(encname)
             
             self.etag = '"' + m.hexdigest() + '"'
