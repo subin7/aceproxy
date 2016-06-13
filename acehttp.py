@@ -479,7 +479,7 @@ class Client:
             if AceConfig.transcodecmd.has_key(fmt):
                 stderr = None if AceConfig.loglevel == logging.DEBUG else DEVNULL
                 transcoder = psutil.Popen(AceConfig.transcodecmd[fmt], bufsize=AceConfig.readchunksize,
-                                      stdin=PIPE, stdout=self.handler.wfile, stderr=stderr)
+                                      stdin=PIPE, stdout=self.handler.wfile, stderr=stderr, shell=True)
                 out = transcoder.stdin
             else:
                 transcoder = None
