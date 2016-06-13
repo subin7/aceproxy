@@ -10,15 +10,17 @@ from plugins.config.playlist import PlaylistConfig as config
 class PlaylistGenerator(object):
 
     def __init__(self,
-                 m3uemptyheader=config.m3uemptyheader, 
-                 m3uheader=config.m3uheader, 
+                 m3uemptyheader=config.m3uemptyheader,
+                 m3uheader=config.m3uheader,
                  m3uchanneltemplate=config.m3uchanneltemplate,
-                 changeItem = config.changeItem):
+                 changeItem=config.changeItem,
+                 comparator=config.compareItems if config.sort else None):
         self.itemlist = list()
         self.m3uemptyheader = m3uemptyheader
         self.m3uheader = m3uheader
         self.m3uchanneltemplate = m3uchanneltemplate
         self.changeItem = changeItem
+        self.comparator = comparator
 
     def addItem(self, itemdict):
         '''
@@ -37,18 +39,19 @@ class PlaylistGenerator(object):
         '''
         Generates EXTINF line with url
         '''
-        self.changeItem(item)
-        
-        if not item.has_key('tvg'):
-            item['tvg'] = item.get('name').replace(' ', '_')
-        if not item.has_key('tvgid'):
-            item['tvgid'] = ''
-        if not item.has_key('group'):
-            item['group'] = ''
-        if not item.has_key('logo'):
-            item['logo'] = ''
-            
         return self.m3uchanneltemplate % item
+
+    def _changeItems(self):
+        for item in self.itemlist:
+            self.changeItem(item)
+            if not item.has_key('tvg'):
+                item['tvg'] = item.get('name').replace(' ', '_')
+            if not item.has_key('tvgid'):
+                item['tvgid'] = ''
+            if not item.has_key('group'):
+                item['group'] = ''
+            if not item.has_key('logo'):
+                item['logo'] = ''
 
     def exportm3u(self, hostport, path='', add_ts=False, empty_header=False, archive=False, process_url=True, header=None, fmt=None):
         '''
@@ -66,8 +69,14 @@ class PlaylistGenerator(object):
                 itemlist = self.m3uemptyheader
         else:
             itemlist = header
+
+        self._changeItems()
+        if self.comparator:
+            items = sorted(self.itemlist, cmp=self.comparator)
+        else:
+            items=self.itemlist
         
-        for i in self.itemlist:
+        for i in items:
             item = i.copy()
             item['name'] = item['name'].replace('"', "'").replace(',', '.')
             url = item['url'];
@@ -77,16 +86,16 @@ class PlaylistGenerator(object):
                 item['url'] = re.sub('^(http.+)$', lambda match: 'http://' + hostport + path + '/torrent/' + \
                                  urllib2.quote(match.group(0), '') + '/stream.mp4', url,
                                        flags=re.MULTILINE)
-                if url == item['url']: # For PIDs
+                if url == item['url']:  # For PIDs
                     item['url'] = re.sub('^(acestream://)?(?P<pid>[0-9a-f]{40})$', 'http://' + hostport + path + '/pid/\\g<pid>/stream.mp4',
                                         url, flags=re.MULTILINE)
-                if archive and url == item['url']: # For archive channel id's
+                if archive and url == item['url']:  # For archive channel id's
                     item['url'] = re.sub('^([0-9]+)$', lambda match: 'http://' + hostport + path + '/archive/play?id=' + match.group(0),
                                         url, flags=re.MULTILINE)
-                if not archive and url == item['url']: # For channel id's
+                if not archive and url == item['url']:  # For channel id's
                     item['url'] = re.sub('^([0-9]+)$', lambda match: 'http://' + hostport + path + '/channels/play?id=' + match.group(0),
                                             url, flags=re.MULTILINE)
-                if url == item['url']: # For channel names
+                if url == item['url']:  # For channel names
                     item['url'] = re.sub('^([^/]+)$', lambda match: 'http://' + hostport + path + '/' + match.group(0),
                                             url, flags=re.MULTILINE)
             
