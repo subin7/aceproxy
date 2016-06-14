@@ -39,10 +39,11 @@ class TorrentTvApi(object):
 
     API_URL = 'http://1ttvapi.top/v3/'
 
-    def __init__(self, email, password, maxIdle):
+    def __init__(self, email, password, maxIdle, zoneid=None):
         self.email = email
         self.password = password
         self.maxIdle = maxIdle
+        self.zoneid = zoneid
         self.session = None
         self.allTranslations = None
         self.lastActive = 0.0
@@ -84,18 +85,22 @@ class TorrentTvApi(object):
         :param raw: if True returns unprocessed data
         :return: translations list
         """
+        
+        query = '&type=' + translation_type
+        if self.zoneid:
+            query += '&zone_id=' + self.zoneid
 
         if raw:
             try:
-                res = self._xmlresult('translation_list.php', '&type=' + translation_type)
+                res = self._xmlresult('translation_list.php', query)
                 self._checkxml(res)
                 return res
             except TorrentTvApiException:
-                res = self._xmlresult('translation_list.php', '&type=' + translation_type)
+                res = self._xmlresult('translation_list.php', query)
                 self._checkxml(res)
                 return res
         else:
-            res = self._checkedxmlresult('translation_list.php', '&type=' + translation_type)
+            res = self._checkedxmlresult('translation_list.php', query)
             return res.getElementsByTagName('channel')
 
     def records(self, channel_id, date, raw=False):
