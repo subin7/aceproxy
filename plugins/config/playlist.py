@@ -14,8 +14,12 @@ class PlaylistConfig():
     # m3uchannelnames['Sky Sport 1 HD (Italy)'] = 'Sky Sport 1 HD'
     m3uchannelnames = dict()
     
-    # Similar to m3uchannelnames but for groups 
+    # Similar to m3uchannelnames but for groups.
     m3ugroupnames = dict()
+    
+    # Channel name to tvg name mappings.  
+    m3utvgnames = dict()
+    # m3utvgnames['Channel name'] = 'Tvg_name'
     
     # Playlist sorting options.
     sort = False
@@ -35,20 +39,23 @@ class PlaylistConfig():
     def changeItem(item):
         PlaylistConfig._changeItemByDict(item, 'name', PlaylistConfig.m3uchannelnames)
         PlaylistConfig._changeItemByDict(item, 'group', PlaylistConfig.m3ugroupnames)
+        PlaylistConfig._changeItemByDict(item, 'name', PlaylistConfig.m3utvgnames, 'tvg')
 
     @staticmethod
-    def _changeItemByDict(item, key, replacementsDict):
+    def _changeItemByDict(item, key, replacementsDict, setKey=None):
         if len(replacementsDict) > 0:
             value = item[key]
+            if not setKey:
+                setKey = key
             
             if isinstance(value, str):
                 value = replacementsDict.get(value)
                 if value:
-                    item[key] = value
+                    item[setKey] = value
             elif isinstance(value, unicode):
                 value = replacementsDict.get(value.encode('utf8'))
                 if value:
-                    item[key] = value.decode('utf8')
+                    item[setKey] = value.decode('utf8')
 
     # This comparator is used for the playlist sorting.
     @staticmethod
