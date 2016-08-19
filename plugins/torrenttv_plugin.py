@@ -107,15 +107,16 @@ class Torrenttv(AceProxyPlugin):
                     return
             
             url = urlparse.urlparse(connection.path)
+            path = url.path[0:-1] if url.path.endswith('/') else url.path
             params = urlparse.parse_qs(url.query)
             fmt = params['fmt'][0] if params.has_key('fmt') else None
             
-            if url.path.startswith('/torrenttv/channel/'):
-                if not url.path.endswith('.mp4'):
-                    connection.dieWithError(404, 'Invalid path: ' + url.path, logging.DEBUG)
+            if path.startswith('/torrenttv/channel/'):
+                if not path.endswith('.mp4'):
+                    connection.dieWithError(404, 'Invalid path: ' + path, logging.DEBUG)
                     return
                 
-                name = urllib2.unquote(url.path[19:-4]).decode('UTF8')
+                name = urllib2.unquote(path[19:-4]).decode('UTF8')
                 url = self.channels.get(name)
                 if not url:
                     connection.dieWithError(404, 'Unknown channel: ' + name, logging.DEBUG)
@@ -138,7 +139,7 @@ class Torrenttv(AceProxyPlugin):
             else:
                 hostport = connection.headers['Host']
                 path = '' if len(self.channels) == 0 else '/torrenttv/channel'
-                add_ts = True if url.path.endswith('/ts')  else False
+                add_ts = True if path.endswith('/ts')  else False
                 header = '#EXTM3U url-tvg="%s" tvg-shift=%d\n' % (config.tvgurl, config.tvgshift)
                 exported = self.playlist.exportm3u(hostport, path, add_ts=add_ts, header=header, fmt=fmt)
                 
@@ -150,6 +151,6 @@ class Torrenttv(AceProxyPlugin):
                 connection.end_headers()
         
         if play:
-            connection.handleRequest(headers_only, name, config.logomap.get(name))
+            connection.handleRequest(headers_only, name, config.logomap.get(name), fmt=fmt)
         elif not headers_only:
             connection.wfile.write(exported)
