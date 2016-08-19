@@ -106,10 +106,18 @@ class P2pproxy(AceProxyPlugin):
                     connection.end_headers()
                     return
 
-                param_group = self.get_param('group')
+                param_group = self.params.get('group')
                 param_filter = self.get_param('filter')
                 if not param_filter:
                     param_filter = 'all'  # default filter
+                if param_group:
+                    if 'all' in param_group:
+                        param_group = None
+                    else:
+                        tmp = []
+                        for g in param_group:
+                            tmp += g.split(',')
+                        param_group = tmp
 
                 translations_list = self.api.translations(param_filter)
 
@@ -118,7 +126,7 @@ class P2pproxy(AceProxyPlugin):
                 for channel in translations_list:
                     group_id = channel.getAttribute('group')
 
-                    if param_group and param_group != 'all' and param_group != group_id:  # filter channels by group
+                    if param_group and not group_id in param_group:  # filter channels by group
                         continue
 
                     name = channel.getAttribute('name')
