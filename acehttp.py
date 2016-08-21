@@ -442,10 +442,12 @@ class Client:
         self.channelIcon = channelIcon
         self.ace = None
         self.lock = threading.Condition(threading.Lock())
+        self.connectionTime = time.time()
         self.queue = deque()
     
     def handle(self, shouldStart, url, fmt=None):
         logger = logging.getLogger("ClientHandler")
+        self.connectionTime = time.time()
         
         if shouldStart:
             self.ace._streamReaderState = 1

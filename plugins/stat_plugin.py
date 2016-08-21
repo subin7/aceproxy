@@ -4,7 +4,7 @@ Simple statistics plugin
 To use it, go to http://127.0.0.1:8000/stat
 '''
 from modules.PluginInterface import AceProxyPlugin
-
+import time
 
 class Stat(AceProxyPlugin):
     handlers = ('stat', 'favicon.ico')
@@ -28,7 +28,7 @@ class Stat(AceProxyPlugin):
         connection.wfile.write(
             '<html><body><h4>Connected clients: ' + str(self.stuff.clientcounter.total) + '</h4>')
         connection.wfile.write(
-            '<h5>Concurrent connections limit: ' + str(self.config.maxconns) + '</h5><table>')
+            '<h5>Concurrent connections limit: ' + str(self.config.maxconns) + '</h5><table  border="1" cellspacing="0" cellpadding="3">')
         for i in self.stuff.clientcounter.clients:
             for c in self.stuff.clientcounter.clients[i]:
                 connection.wfile.write('<tr><td>')
@@ -38,5 +38,6 @@ class Stat(AceProxyPlugin):
                     connection.wfile.write(c.channelName.encode('UTF8'))
                 else:
                     connection.wfile.write(i)
-                connection.wfile.write('</td><td> : ' + c.handler.clientip + '</td></tr>')
+                connection.wfile.write('</td><td>' + c.handler.clientip + '</td>')
+                connection.wfile.write('<td>' + time.strftime('%d %b %Y %H:%M:%S', time.localtime(c.connectionTime)) + '</td></tr>')
         connection.wfile.write('</table></body></html>')
