@@ -39,7 +39,7 @@ class TorrentTvApi(object):
 
     API_URL = 'http://1ttvapi.top/v3/'
 
-    def __init__(self, email, password, maxIdle, zoneid=None):
+    def __init__(self, email, password, maxIdle, zoneid='1'):
         self.email = email
         self.password = password
         self.maxIdle = maxIdle
@@ -73,6 +73,11 @@ class TorrentTvApi(object):
             self.session = result['session']
             self.lastActive = time.time()
             self.log.debug("New session created: " + self.session)
+            
+            req = TorrentTvApi.API_URL + 'set_zone.php?session=' + self.session + '&zone=' + self.zoneid
+            result = self._jsoncheck(json.loads(urllib2.urlopen(req, timeout=10).read()))
+            self.log.debug("HTTP streaming ZoneID set to : " + self.zoneid)                    
+            
             return self.session
 
     def translations(self, translation_type, raw=False):
@@ -87,9 +92,6 @@ class TorrentTvApi(object):
         """
         
         query = '&type=' + translation_type
-        if self.zoneid:
-            query += '&zone_id=' + self.zoneid
-
         if raw:
             try:
                 res = self._xmlresult('translation_list.php', query)
