@@ -171,7 +171,13 @@ class AceClient(object):
         '''
         Start video method
         '''
-        stream_type = 'output_format=http' if self._engine_version_code >= 3010500 and not AceConfig.vlcuse else ''
+        if self._engine_version_code >= 3010500 and AceConfig.vlcuse:
+           stream_type = 'output_format=hls' + ' transcode_audio=' + str(AceConfig.transcode_audio) \
+                                             + ' transcode_mp3=' + str(AceConfig.transcode_mp3) \
+                                             + ' transcode_ac3=' + str(AceConfig.transcode_ac3)
+        else:
+           stream_type = 'output_format=http' 
+
         self._urlresult = AsyncResult()
         self._write(AceMessage.request.START(datatype.upper(), value, stream_type))
         self._getResult()
