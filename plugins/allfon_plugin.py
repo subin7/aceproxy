@@ -57,6 +57,7 @@ class Allfon(AceProxyPlugin):
         matches = re.finditer(r'\#EXTINF\:0\,(?P<name>\S.+)\n.+\n.+\n(?P<url>^acestream.+$)',
                               Allfon.playlist, re.MULTILINE)
 
+
         add_ts = False
         try:
             if connection.splittedpath[2].lower() == 'ts':

@@ -11,6 +11,8 @@ import threading
 import urlparse
 import md5
 import traceback
+import gzip
+from StringIO import StringIO
 from modules.PluginInterface import AceProxyPlugin
 from modules.PlaylistGenerator import PlaylistGenerator
 import config.torrenttv as config
@@ -32,7 +34,7 @@ class Torrenttv(AceProxyPlugin):
         self.etag = None
         self.logomap = config.logomap
         self.updatelogos = p2pconfig.email != 're.place@me' and p2pconfig.password != 'ReplaceMe'
-        
+
         if config.updateevery:
             gevent.spawn(self.playlistTimedDownloader)
 
@@ -46,27 +48,45 @@ class Torrenttv(AceProxyPlugin):
         try:
             self.logger.debug('Trying to download playlist')
             req = urllib2.Request(config.url, headers={'User-Agent' : "Magic Browser"})
-            origin = urllib2.urlopen(req, timeout=10).read()
+            req.add_header('Accept-encoding' , 'gzip')
+            response = urllib2.urlopen(req, timeout=15)
+
+            origin = ''
+
+            if response.info().get('Content-Encoding') == 'gzip':
+               # read the encoded response into a buffer
+               buffer = StringIO(response.read())
+               # gzip decode the response
+               f = gzip.GzipFile(fileobj=buffer)
+               # store the result
+               origin = f.read()
+               # close the buffer
+               buffer.close()
+               # else if the response isn't gzip-encoded
+               self.logger.debug('Playlist downloaded using gzip compression')
+            else:
+              # store the result
+               origin = response.read()
+               self.logger.debug('Playlist downloaded')
+
             matches = re.finditer(r',(?P<name>\S.+) \((?P<group>.+)\)\n(?P<url>^.+$)', origin, re.MULTILINE)
             self.playlisttime = int(time.time())
             self.playlist = PlaylistGenerator()
             self.channels = dict()
             m = md5.new()
-            
+
             for match in matches:
                 itemdict = match.groupdict()
                 encname = itemdict.get('name')
                 name = encname.decode('UTF-8')
                 logo = config.logomap.get(name)
                 url = itemdict['url']
-                
                 if logo:
                     itemdict['logo'] = logo
 
                 if (url.startswith('acestream://')) or (url.startswith('http://') and url.endswith('.acelive')):
                     self.channels[name] = url
                     itemdict['url'] = urllib2.quote(encname, '') + '.mp4'
-
                 self.playlist.addItem(itemdict)
                 m.update(encname)
             
@@ -140,7 +160,7 @@ class Torrenttv(AceProxyPlugin):
                 hostport = connection.headers['Host']
                 path = '' if len(self.channels) == 0 else '/torrenttv/channel'
                 add_ts = True if path.endswith('/ts')  else False
-                header = '#EXTM3U url-tvg="%s" tvg-shift=%d\n' % (config.tvgurl, config.tvgshift)
+                header = '#EXTM3U url-tvg="%s" tvg-shift=%d deinterlace=auto\n' % (config.tvgurl, config.tvgshift)
                 exported = self.playlist.exportm3u(hostport, path, add_ts=add_ts, header=header, fmt=fmt)
                 
                 connection.send_response(200)
