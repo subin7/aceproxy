@@ -68,8 +68,8 @@ class Torrenttv(AceProxyPlugin):
               # store the result
                origin = response.read()
                self.logger.debug('Playlist downloaded')
-
-            matches = re.finditer(r',(?P<name>\S.+) \((?P<group>.+)\)\n(?P<url>^.+$)', origin, re.MULTILINE)
+            
+            matches = re.finditer(r',(?P<name>\S.+) \((?P<group>.+)\)[\r\n]+(?P<url>[^\r\n]+)?', origin, re.MULTILINE)
             self.playlisttime = int(time.time())
             self.playlist = PlaylistGenerator()
             self.channels = dict()
