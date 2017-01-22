@@ -29,6 +29,7 @@ import json
 import time
 import threading
 import urllib2
+import urllib
 import urlparse
 import Queue
 import aceclient
@@ -50,6 +51,19 @@ except ImportError:
 class HTTPHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 
     requestlist = []
+    
+    def log_message(self, format, *args):
+        logger.debug("%s - - [%s] %s\n" %
+                      (self.address_string(),
+                       self.log_date_time_string(),
+                       urllib.unquote(format%args).decode('UTF-8')))
+
+    def log_request(self, code='-', size='-'):
+        logger.debug('"%s" %s %s',
+                      self.requestline, str(code), str(size))
+
+    def log_error(self, format, *args):
+        logger.debug(format, *args)
     
     def handle_one_request(self):
         '''
@@ -190,7 +204,7 @@ class HTTPHandler(BaseHTTPServer.BaseHTTPRequestHandler):
                     self.dieWithError(403)  # 403 Forbidden
                     return
 
-        logger.info("Accepted connection from " + self.clientip + " path " + self.path)
+        logger.info("Accepted connection from " + self.clientip + " path " + urllib.unquote(self.path).decode('UTF-8'))
 
         try:
             self.splittedpath = self.path.split('/')
