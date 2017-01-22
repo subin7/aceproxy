@@ -53,7 +53,7 @@ class HTTPHandler(BaseHTTPServer.BaseHTTPRequestHandler):
     requestlist = []
     
     def log_message(self, format, *args):
-        logger.debug("%s - - [%s] %s\n" %
+        logger.info("%s - - [%s] %s\n" %
                       (self.address_string(),
                        self.log_date_time_string(),
                        urllib.unquote(format%args).decode('UTF-8')))
@@ -63,7 +63,7 @@ class HTTPHandler(BaseHTTPServer.BaseHTTPRequestHandler):
                       self.requestline, str(code), str(size))
 
     def log_error(self, format, *args):
-        logger.debug(format, *args)
+        logger.error(format, *args)
     
     def handle_one_request(self):
         '''
