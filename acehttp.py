@@ -190,7 +190,8 @@ class HTTPHandler(BaseHTTPServer.BaseHTTPRequestHandler):
         # Current greenlet
         self.requestgreenlet = gevent.getcurrent()
         # Connected client IP address
-        self.clientip = self.request.getpeername()[0]
+        self.clientip = self.headers['X-Forwarded-For'] \
+            if self.headers.has_key('X-Forwarded-For') else self.request.getpeername()[0]
 
         if AceConfig.firewall:
             # If firewall enabled
