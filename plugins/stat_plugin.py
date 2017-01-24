@@ -5,10 +5,12 @@ To use it, go to http://127.0.0.1:8000/stat
 '''
 from modules.PluginInterface import AceProxyPlugin
 import time
+import locale
 
 class Stat(AceProxyPlugin):
     handlers = ('stat', 'favicon.ico')
-
+    locale.setlocale(locale.LC_ALL, locale.getdefaultlocale())
+    
     def __init__(self, AceConfig, AceStuff):
         self.config = AceConfig
         self.stuff = AceStuff
@@ -39,5 +41,5 @@ class Stat(AceProxyPlugin):
                 else:
                     connection.wfile.write(i)
                 connection.wfile.write('</td><td>' + c.handler.clientip + '</td>')
-                connection.wfile.write('<td>' + time.strftime('%d %b %Y %H:%M:%S', time.localtime(c.connectionTime)) + '</td></tr>')
+                connection.wfile.write('<td>' + time.strftime('%c', time.localtime(c.connectionTime)) + '</td></tr>')
         connection.wfile.write('</table></body></html>')
