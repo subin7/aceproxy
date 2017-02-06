@@ -31,7 +31,7 @@ class Stat(AceProxyPlugin):
         """
         GEOIP_LOOKUP_URL = 'http://api.2ip.ua/geo.json?ip=%s'
         lookup_url = GEOIP_LOOKUP_URL % ip_address
-        response = json.loads(urlopen(lookup_url).read())
+        response = json.loads(urlopen(lookup_url, timeout=5).read())
 
         return {'country_code' : response['country_code'],
                 'country'      : response['country'],
@@ -74,7 +74,8 @@ class Stat(AceProxyPlugin):
                 if clientinrange: 
                    connection.wfile.write('<td>' + 'Local IP adress' + '</td>')
                 else:
-                   connection.wfile.write('<td>' + self.geo_ip_lookup(c.handler.clientip).get('country') + ' , ' + self.geo_ip_lookup(c.handler.clientip).get('city') + '</td>')
+                   geo_ip_info = self.geo_ip_lookup(c.handler.clientip)
+                   connection.wfile.write('<td>' + geo_ip_info.get('country') + ', ' + geo_ip_info.get('city') + '</td>')
 
                 connection.wfile.write('<td>' + time.strftime('%c', time.localtime(c.connectionTime)) + '</td>')
                 connection.wfile.write('<td>' + time.strftime("%H:%M:%S",  time.gmtime(current_time-c.connectionTime)) + '</td></tr>')
