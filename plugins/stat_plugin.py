@@ -7,7 +7,7 @@ from modules.PluginInterface import AceProxyPlugin
 import time
 import json
 import plugins.modules.ipaddr as ipaddr
-from urllib import urlopen
+import urllib2
 
 localnetranges = (
         '192.168.0.0/16',
@@ -31,8 +31,9 @@ class Stat(AceProxyPlugin):
         """
         GEOIP_LOOKUP_URL = 'http://api.2ip.ua/geo.json?ip=%s'
         lookup_url = GEOIP_LOOKUP_URL % ip_address
-        response = json.loads(urlopen(lookup_url, timeout=5).read())
-
+        req = urllib2.Request(lookup_url, headers={'User-Agent' : "Magic Browser"})
+        response = json.loads(urllib2.urlopen(req, timeout=5).read())
+        
         return {'country_code' : response['country_code'],
                 'country'      : response['country'],
                 'region'       : response['region'],
