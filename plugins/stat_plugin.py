@@ -5,9 +5,11 @@ To use it, go to http://127.0.0.1:8000/stat
 '''
 from modules.PluginInterface import AceProxyPlugin
 import time
-import json
-import plugins.modules.ipaddr as ipaddr
+import logging
 import urllib2
+import plugins.modules.ipaddr as ipaddr
+import locale
+import json
 
 localnetranges = (
         '192.168.0.0/16',
@@ -20,25 +22,30 @@ localnetranges = (
 
 class Stat(AceProxyPlugin):
     handlers = ('stat', 'favicon.ico')
+    locale.setlocale(locale.LC_ALL, locale.getdefaultlocale())
+    logger = logging.getLogger('STAT')
 
     def __init__(self, AceConfig, AceStuff):
         self.config = AceConfig
         self.stuff = AceStuff
 
     def geo_ip_lookup(self, ip_address):
-        """
-         Look up the geo information based on the IP address passed in
-        """
-        GEOIP_LOOKUP_URL = 'http://api.2ip.ua/geo.json?ip=%s'
-        lookup_url = GEOIP_LOOKUP_URL % ip_address
+        lookup_url = 'http://api.2ip.ua/geo.json?ip=' + ip_address
+        Stat.logger.debug('Trying to obtain geoip info : ' + lookup_url)
+
         req = urllib2.Request(lookup_url, headers={'User-Agent' : "Magic Browser"})
-        response = json.loads(urllib2.urlopen(req, timeout=5).read())
-        
-        return {'country_code' : response['country_code'],
-                'country'      : response['country'],
-                'region'       : response['region'],
-                'city'         : response['city'],
-                }
+        response = self._jsoncheck(json.loads(urllib2.urlopen(req, timeout=10).read()))
+
+        return {'country'      : response['country'],
+                'city'         : response['city']}
+
+    def _jsoncheck(self, jsonresult):
+        country = jsonresult['country']
+        city = jsonresult['city']
+
+        if (country == '-' or not country) or (city == '-' or not city):
+              jsonresult = {"country":"---","city":"---"}
+        return jsonresult
 
     def handle(self, connection, headers_only=False):
         current_time = time.time()
@@ -76,7 +83,7 @@ class Stat(AceProxyPlugin):
                    connection.wfile.write('<td>' + 'Local IP adress' + '</td>')
                 else:
                    geo_ip_info = self.geo_ip_lookup(c.handler.clientip)
-                   connection.wfile.write('<td>' + geo_ip_info.get('country') + ', ' + geo_ip_info.get('city') + '</td>')
+                   connection.wfile.write('<td>' + geo_ip_info.get('country').encode('utf-8') + ', ' + geo_ip_info.get('city').encode('utf-8') + '</td>')
 
                 connection.wfile.write('<td>' + time.strftime('%c', time.localtime(c.connectionTime)) + '</td>')
                 connection.wfile.write('<td>' + time.strftime("%H:%M:%S",  time.gmtime(current_time-c.connectionTime)) + '</td></tr>')
