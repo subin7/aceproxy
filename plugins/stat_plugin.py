@@ -30,22 +30,15 @@ class Stat(AceProxyPlugin):
         self.stuff = AceStuff
 
     def geo_ip_lookup(self, ip_address):
-        lookup_url = 'http://api.2ip.ua/geo.json?ip=' + ip_address
+#        lookup_url = 'http://api.2ip.ua/geo.json?ip=' + ip_address
+        lookup_url = 'http://freegeoip.net/json/'+ip_address
         Stat.logger.debug('Trying to obtain geoip info : ' + lookup_url)
 
         req = urllib2.Request(lookup_url, headers={'User-Agent' : "Magic Browser"})
-        response = self._jsoncheck(json.loads(urllib2.urlopen(req, timeout=10).read()))
+        response = json.loads(urllib2.urlopen(req, timeout=10).read())
 
-        return {'country'      : response['country'],
-                'city'         : response['city']}
-
-    def _jsoncheck(self, jsonresult):
-        country = jsonresult['country']
-        city = jsonresult['city']
-
-        if (country == '-' or not country) or (city == '-' or not city):
-              jsonresult = {"country":"---","city":"---"}
-        return jsonresult
+        return {'country' : '-/-' if not response['country_name'] else response['country_name'] ,
+                'city'    : '-/-' if not response['city'] else response['city']}
 
     def handle(self, connection, headers_only=False):
         current_time = time.time()
@@ -65,7 +58,9 @@ class Stat(AceProxyPlugin):
             '<meta http-equiv="Refresh" content="60" />'
             '<html><body><h4>Connected clients: ' + str(self.stuff.clientcounter.total) + '</h4>')
         connection.wfile.write(
-            '<h5>Concurrent connections limit: ' + str(self.config.maxconns) + '</h5><table  border="1" cellspacing="0" cellpadding="3">')
+            '<h5>Concurrent connections limit: ' + str(self.config.maxconns) + '</h5><table  border="2" cellspacing="0" cellpadding="3">')
+        connection.wfile.write(
+            '<tr align=CENTER valign=BASELINE BGCOLOR="#C0C0C0"><td>Channel name</td><td>Client IP</td><td>Location</td><td>Start time</td><td>Duration</td></tr>')
         for i in self.stuff.clientcounter.clients:
             for c in self.stuff.clientcounter.clients[i]:
                 connection.wfile.write('<tr><td>')
@@ -79,12 +74,12 @@ class Stat(AceProxyPlugin):
                 connection.wfile.write('</td><td>' + c.handler.clientip + '</td>')
                 clientinrange = any(map(lambda i: ipaddr.IPAddress(c.handler.clientip) in ipaddr.IPNetwork(i),localnetranges))
 
-                if clientinrange: 
-                   connection.wfile.write('<td>' + 'Local IP adress' + '</td>')
+                if clientinrange:
+                    connection.wfile.write('<td>' + 'Local IP adress' + '</td>')
                 else:
-                   geo_ip_info = self.geo_ip_lookup(c.handler.clientip)
-                   connection.wfile.write('<td>' + geo_ip_info.get('country').encode('utf-8') + ', ' + geo_ip_info.get('city').encode('utf-8') + '</td>')
+                    geo_ip_info = self.geo_ip_lookup(c.handler.clientip)
+                    connection.wfile.write('<td>' + geo_ip_info.get('country').encode('utf-8') + ', ' + geo_ip_info.get('city').encode('utf-8') + '</td>')
 
                 connection.wfile.write('<td>' + time.strftime('%c', time.localtime(c.connectionTime)) + '</td>')
-                connection.wfile.write('<td>' + time.strftime("%H:%M:%S",  time.gmtime(current_time-c.connectionTime)) + '</td></tr>')
+                connection.wfile.write('<td align="center">' + time.strftime("%H:%M:%S",  time.gmtime(current_time-c.connectionTime)) + '</td></tr>')
         connection.wfile.write('</table></body></html>')
