@@ -65,6 +65,7 @@ logomap = {
     u'Amedia 1 HD': logobase + 'KPN6ULwGzTNbKziTI9sN7xfFPhtRzc.png',
     u'Amedia 2': logobase + 'fAvxTQbWu0DAcMkqej0m73KohAcQJw.png',
     u'Amedia Hit': logobase + '3lKypp7zXsJ3FDusXzKw9hHnVLythX.png',
+    u'Amedia Hit HD': logobase + 'HdnTfcZCgP7Odm1cOKNq9j4yJDRiFP.png',
     u'Amedia Premium': logobase + 'ornzQpk6WCW6xk0lyBhlwqH8u2QyU7.png',
     u'Amedia Premium HD': logobase + 'ornzQpk6WCW6xk0lyBhlwqH8u2QyU7.png',
     u'Ani': logobase + 'vui1cRrE05CZv1N9Qb20jJ6mTFOJue.png',
