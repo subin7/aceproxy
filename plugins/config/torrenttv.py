@@ -798,7 +798,7 @@ logomap = {
     u'СТВ': logobase + 'W1RY5hkIyvOOr2d8XT6GisDsIFlpbS.png',
     u'Страна': logobase + '5G27bahViND43dD1VlkaKlQRsYOqwL.png',
     u'Страна FM ТВ': logobase + 'ysrRW9deFkccNGlhtT0Sww5Yt8IpY1.png',
-    u'Страшное HD': logobase + 'Ce9qZfZQAZ8gLs1fb2WCamhsqB6xQN.png'
+    u'Страшное HD': logobase + 'Ce9qZfZQAZ8gLs1fb2WCamhsqB6xQN.png',
     u'СТРК HD': logobase + 'xOmVS1kQFIHeAwqtJbBfrbE75Quj2a.png',
     u'СТРК HD Сочи': logobase + '2PphESGueDUS1T6wSOr12iTgTbIVJm.png',
     u'СТС': logobase + 'is620Pu6DreVLLnpHkpcXXZC9PI2Hi.png',
