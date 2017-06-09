@@ -415,17 +415,16 @@ class HTTPHandler(BaseHTTPServer.BaseHTTPRequestHandler):
             if url.startswith('http'):
                 if url.endswith('.acelive') or  url.endswith('.acestream'):
                     try:
-                        #req = urllib2.Request(url, headers={'User-Agent' : "Magic Browser"})
-                        #f = base64.b64encode(urllib2.urlopen(req, timeout=5).read())
-                        #req = urllib2.Request('http://api.torrentstream.net/upload/raw', f)
-                        #req.add_header('Content-Type', 'application/octet-stream')
-                        #cid = json.loads(urllib2.urlopen(req, timeout=3).read())['content_id']
-                        cid = ''
+                        req = urllib2.Request(url, headers={'User-Agent' : "Magic Browser"})
+                        f = base64.b64encode(urllib2.urlopen(req, timeout=5).read())
+                        req = urllib2.Request('http://api.torrentstream.net/upload/raw', f)
+                        req.add_header('Content-Type', 'application/octet-stream')
+                        cid = json.loads(urllib2.urlopen(req, timeout=3).read())['content_id']
                     except:
                         pass
                         
                     if cid == '':
-                        #logging.debug("Failed to get CID from WEB API")
+                        logging.debug("Failed to get CID from WEB API")
                         try:
                             with AceStuff.clientcounter.lock:
                                 if not AceStuff.clientcounter.idleace:
