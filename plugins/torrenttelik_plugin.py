@@ -6,10 +6,12 @@ http://ip:port/torrent-telik || http://ip:port/torrent-telik/?type=ttv = torrent
 http://ip:port/torrent-telik/?type=mob_ttv = torrent-tv mobile playlist
 http://ip:port/torrent-telik/?type=allfon = allfon playlist
 '''
+
 import json
 import logging
-import urllib2
 import urlparse
+import requests
+import time
 from modules.PluginInterface import AceProxyPlugin
 from modules.PlaylistGenerator import PlaylistGenerator
 import config.torrenttelik as config
@@ -19,17 +21,27 @@ class Torrenttelik(AceProxyPlugin):
 
     handlers = ('torrent-telik', )
 
-    logger = logging.getLogger('plugin_torrenttelik')
+    logger = logging.getLogger('Plugin_Torrenttelik')
     playlist = None
+    playlisttime = None
 
     def downloadPlaylist(self, url):
         try:
-            req = urllib2.Request(url, headers={'User-Agent' : "Magic Browser"})
-            Torrenttelik.playlist = urllib2.urlopen(req, timeout=10).read()
-            Torrenttelik.playlist = Torrenttelik.playlist.split('\xef\xbb\xbf')[1]     # garbage at the beginning
-            Torrenttelik.playlist = Torrenttelik.playlist.replace(',\r\n]}', '\r\n]}') # excess comma at the end
+            Torrenttelik.logger.debug('Trying to download Torrent-telik playlist')
+            self.headers = {'User-Agent' : "Magic Browser",
+                            'Accept-Encoding': 'gzip'}
+            if config.useproxy:
+                   r = requests.get(url, headers=self.headers, proxies=config.proxies, timeout=30)
+            else:
+                   r = requests.get(url, headers=self.headers, timeout=10)
+            Torrenttelik.playlist = r.content
+            Torrenttelik.playlisttime = int(time.time())
+            Torrenttelik.logger.debug('Torrent-telik playlist ' + r.url + ' downloaded !')
+
+            Torrenttelik.playlist = Torrenttelik.playlist.split('\xef\xbb\xbf')[1]
+            Torrenttelik.playlist = Torrenttelik.playlist.replace(',\r\n]}', '\r\n]}')
         except:
-            Torrenttelik.logger.error("Can't download playlist!")
+            Torrenttelik.logger.error("Can't download Torrent-telik playlist!")
             return False
 
         return True
@@ -41,7 +53,7 @@ class Torrenttelik(AceProxyPlugin):
         connection.send_response(200)
         connection.send_header('Content-Type', 'application/x-mpegurl')
         connection.end_headers()
-        
+
         if headers_only:
             return
 
@@ -57,9 +69,11 @@ class Torrenttelik(AceProxyPlugin):
         elif list_type.startswith('allfon'):
             url = config.url_allfon
 
-        if not self.downloadPlaylist(url):
-            connection.dieWithError()
-            return
+        # 30 minutes cache
+        if not Torrenttelik.playlist or (int(time.time()) - Torrenttelik.playlisttime > 30 * 60):
+            if not self.downloadPlaylist(url):
+                connection.dieWithError()
+                return
 
         # Un-JSON channel list
         try:
@@ -87,12 +101,12 @@ class Torrenttelik(AceProxyPlugin):
             channel['group'] = channel.get('cat', '')
             playlistgen.addItem(channel)
 
-        Torrenttelik.logger.debug('Exporting')
-        header = '#EXTM3U url-tvg="%s" tvg-shift=%d\n' %(config.tvgurl, config.tvgshift)
+        Torrenttelik.logger.debug('Torrent-telik playlist created')
+        header = '#EXTM3U url-tvg="%s" tvg-shift=%d deinterlace=1 m3uautoload=1 cache=1000\n' %(config.tvgurl, config.tvgshift)
         exported = playlistgen.exportm3u(hostport, header=header, add_ts=add_ts, fmt=self.getparam('fmt'))
-        exported = exported.encode('utf-8') 
+        exported = exported.encode('utf-8')
         connection.wfile.write(exported)
- 
+
     def getparam(self, key):
         if key in self.params:
             return self.params[key][0]

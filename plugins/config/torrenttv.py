@@ -1,14 +1,21 @@
-# -*- coding: utf-8 -*-
+﻿# -*- coding: utf-8 -*-
 
 '''
 Torrent-tv.ru Playlist Downloader Plugin configuration file
 '''
+# Proxy settings.
+# For example you can install tor browser and add in torrc SOCKSPort 9050
+# proxies = {'http' : 'socks5://127.0.0.1:9050','https' : 'socks5://127.0.0.1:9050'}
+# If your http-proxy need authentification - proxies = {'https' : 'https://user:password@ip:port'}
+useproxy = False
+proxies = {'http' : 'socks5://127.0.0.1:9050',
+           'https' : 'socks5://127.0.0.1:9050'}
 
 # Insert your Torrent-tv.ru playlist URL here
-url = ''
+url=''
 
 # TV Guide URL
-tvgurl = 'http://api.torrent-tv.ru/ttv.xmltv.xml.gz'
+tvgurl = 'http://1ttvapi.top/ttv.xmltv.xml.gz'
 
 # Shift the TV Guide time to the specified number of hours
 tvgshift = 0
@@ -20,7 +27,7 @@ tvgshift = 0
 updateevery = 0
 
 # Channel logos mapping
-logobase = 'http://torrent-tv.ru/uploads/'
+logobase = 'http://1ttv.org/uploads/'
 logomap = {
     u'0x0 Fireplace HD': logobase + 'H1VboxDJC7sE7x3nKXoYT0X5r4LIqD.png',
     u'0x0 Music HD': logobase + 'hFj4tnC5uqAgpod3doHnJGZxgZXaiP.png',

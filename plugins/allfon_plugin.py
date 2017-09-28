@@ -4,8 +4,8 @@ http://ip:port/allfon
 '''
 import re
 import logging
-import urllib2
 import urlparse
+import requests
 import time
 from modules.PluginInterface import AceProxyPlugin
 from modules.PlaylistGenerator import PlaylistGenerator
@@ -17,7 +17,7 @@ class Allfon(AceProxyPlugin):
     # ttvplaylist handler is obsolete
     handlers = ('allfon',)
 
-    logger = logging.getLogger('plugin_allfon')
+    logger = logging.getLogger('Plugin_Allfon')
     playlist = None
     playlisttime = None
 
@@ -26,12 +26,18 @@ class Allfon(AceProxyPlugin):
 
     def downloadPlaylist(self):
         try:
-            Allfon.logger.debug('Trying to download playlist: ' + config.url)
-            req = urllib2.Request(config.url, headers={'User-Agent' : "Magic Browser"})
-            Allfon.playlist = urllib2.urlopen(req, timeout=10).read()
+            Allfon.logger.debug('Trying to download AllFonTV playlist')
+            self.headers = {'User-Agent' : "Magic Browser",
+                            'Accept-Encoding': 'gzip'}
+            if config.useproxy:
+                   r = requests.get(config.url, headers=self.headers, proxies=config.proxies, timeout=30)
+            else:
+                   r = requests.get(config.url, headers=self.headers, timeout=10)
+            Allfon.playlist = r.text.encode('UTF-8')
+            Allfon.logger.debug('AllFon playlist ' + r.url + ' downloaded !')
             Allfon.playlisttime = int(time.time())
         except:
-            Allfon.logger.error("Can't download playlist!")
+            Allfon.logger.error("Can't download AllFonTV playlist!")
             return False
 
         return True
@@ -52,19 +58,14 @@ class Allfon(AceProxyPlugin):
         if headers_only:
             return;
 
-        # Match playlist with regexp
-
         matches = re.finditer(r'\#EXTINF\:0\,(?P<name>\S.+)\n.+\n.+\n(?P<url>^acestream.+$)',
                               Allfon.playlist, re.MULTILINE)
-
-
         add_ts = False
         try:
             if connection.splittedpath[2].lower() == 'ts':
                 add_ts = True
         except:
             pass
-
 
         playlistgen = PlaylistGenerator(m3uchanneltemplate=config.m3uchanneltemplate)
         for match in matches:
@@ -73,6 +74,5 @@ class Allfon(AceProxyPlugin):
         url = urlparse.urlparse(connection.path)
         params = urlparse.parse_qs(url.query)
         fmt = params['fmt'][0] if params.has_key('fmt') else None
-        header = '#EXTM3U url-tvg="%s" tvg-shift=%d\n' %(config.tvgurl, config.tvgshift)
+        header = '#EXTM3U url-tvg="%s" tvg-shift=%d deinterlace=1 m3uautoload=1 cache=1000\n' %(config.tvgurl, config.tvgshift)
         connection.wfile.write(playlistgen.exportm3u(hostport, header=header, add_ts=add_ts, fmt=fmt))
-
