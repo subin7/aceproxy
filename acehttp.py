@@ -116,12 +116,12 @@ class HTTPHandler(BaseHTTPServer.BaseHTTPRequestHandler):
                     # Wait for PlayEvent if videoobey is enabled. Not for VLC
                     self.client.ace.getPlayEvent()
 
-                if AceConfig.videoobey and AceConfig.vlcuse:
-                    # For VLC
-                    # Waiting 0.5 seconds. If timeout exceeded (and the Play event
-                    # flag is not set), pause the stream if AceEngine says so and
-                    # we should obey it.
-                    # A bit ugly, huh?
+                if AceConfig.vlcuse:                             
+                    # Ignor videoobey settings when use VLC. For VLC                                                   
+                    # waiting 0.5 seconds. If timeout exceeded (and the Play event                                     
+                    # flag is not set), pause the stream if AceEngine says so and                                      
+                    # we should obey it.                                                                               
+                    # A bit ugly, huh? 
                     self.streamstate = self.client.ace.getPlayEvent(0.5)
                     if self.streamstate and not self.vlcstate:
                         AceStuff.vlcclient.playBroadcast(self.vlcid)
@@ -285,8 +285,8 @@ class HTTPHandler(BaseHTTPServer.BaseHTTPRequestHandler):
         contentid = self.getCid(self.reqtype, self.path_unquoted)
         cid = contentid if contentid else self.path_unquoted
         logger.debug("CID: " + cid)
-        self.client = Client(cid, self, channelName, channelIcon)
-        self.vlcid = urllib2.quote(cid, '')
+        self.vlcid = urllib2.quote(cid, '')                                                                                                     
+        self.client = Client(cid, self, channelName, channelIcon)                                                                               
         shouldStart = AceStuff.clientcounter.add(cid, self.client) == 1
 
         try:
@@ -319,17 +319,17 @@ class HTTPHandler(BaseHTTPServer.BaseHTTPRequestHandler):
                         self.vlcprefix = 'http/ffmpeg://'
                     else:
                         self.vlcprefix = ''
+                    AceStuff.vlcclient.startBroadcast(
+                        self.vlcid, self.vlcprefix + self.url, AceConfig.vlcmux, AceConfig.vlcpreaccess)
+                    # Sleep a bit, because sometimes VLC doesn't open port in time
+                    gevent.sleep(0.5)
 
+                if not AceConfig.vlcuse:
                     self.client.ace.pause()
                     # Sleeping videodelay
                     gevent.sleep(AceConfig.videodelay)
-                    self.client.ace.play()
 
-                    AceStuff.vlcclient.startBroadcast(
-                        self.vlcid, self.vlcprefix + self.url, AceConfig.vlcmux, AceConfig.vlcpreaccess)
-                    # Sleep a bit, because sometimes VLC doesn't open port in
-                    # time
-                    gevent.sleep(0.5)
+            self.client.ace.play()
             
             self.hanggreenlet = gevent.spawn(self.hangDetector)
             logger.debug("hangDetector spawned")

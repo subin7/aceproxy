@@ -96,6 +96,7 @@ class Torrenttv(AceProxyPlugin):
 
                 self.logomap = logos
                 self.logger.debug("Logos updated")
+                self.updatelogos = False
             except:
                 # p2pproxy plugin seems not configured
                 self.updatelogos = False
@@ -109,6 +110,7 @@ class Torrenttv(AceProxyPlugin):
 
             # 30 minutes cache
             if not self.playlist or (int(time.time()) - self.playlisttime > 30 * 60):
+                self.updatelogos = p2pconfig.email != 're.place@me' and p2pconfig.password != 'ReplaceMe'
                 if not self.downloadPlaylist():
                     connection.dieWithError()
                     return

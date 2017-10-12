@@ -93,10 +93,10 @@ class AceConfig(acedefconfig.AceDefConfig):
     # to point ace_player.exe, not vlc.exe!!!
     vlcuseaceplayer = False
     # Spawn VLC automaticaly
-    vlcspawn = False
+    vlcspawn = True
     # VLC cmd line (use `--file-logging --logfile=filepath` to write log)
     # Please use the full path to executable for Windows, for example - C:\\Program Files\\VideoLAN\\VLC\\vlc.exe
-    vlccmd = "vlc -I telnet --clock-jitter -1 --network-caching -1 --sout-mux-caching 2000 --telnet-password admin --telnet-port 4212"
+    vlccmd = 'vlc -I telnet --clock-jitter=0 --clock-synchro=0 --telnet-password admin --telnet-port 4212'
     # VLC spawn timeout
     # Adjust this if you get error 'Cannot spawn VLC!'
     vlcspawntimeout = 5
@@ -118,7 +118,7 @@ class AceConfig(acedefconfig.AceDefConfig):
     # ffmpeg{mux=NAME} (i.e. ffmpeg{mux=mpegts})
     # VLC's ts muxer sometimes can work badly, but that's the best choice for
     # now.
-    vlcmux = 'ts'
+    vlcmux = 'ts{use-key-frames}'
     # Force ffmpeg INPUT demuxer in VLC. Sometimes can help.
     vlcforceffmpeg = False
     # Stream start delay for dumb players (in seconds)
@@ -202,7 +202,7 @@ class AceConfig(acedefconfig.AceDefConfig):
     # Log level (DEBUG, INFO, WARNING, ERROR, CRITICAL)
     loglevel = logging.DEBUG
     # Log message format
-    logfmt = '%(asctime)s %(levelname)s %(threadName)s %(filename)s:%(lineno)d %(name)s| %(message)s'
+    logfmt = '%(filename)-20s [LINE:%(lineno)-4s]# %(levelname)-8s [%(asctime)s]  %(message)s'
     # Log date format
     logdatefmt='%d.%m %H:%M:%S'
     # Full path to a log file
