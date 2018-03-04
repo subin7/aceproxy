@@ -1,1 +1,1 @@
-web: python acehttp.py runserver 0.0.0.0:8000
+web: python acehttp.py runserver http://localhost:8000
