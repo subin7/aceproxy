@@ -1,1 +1,1 @@
-worker: python acehttp.py
+web: python acehttp.py runserver 0.0.0.0:8000
